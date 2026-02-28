@@ -1,0 +1,25 @@
+# BizNode AI Requirements
+# =======================
+
+# Core
+python-telegram-bot>=20.0
+requests>=2.28.0
+
+# LangGraph
+langgraph>=0.0.20
+langchain-core>=0.1.0
+
+# Vector Database
+qdrant-client>=1.3.0
+
+# LLM/Ollama
+# (Ollama runs separately, this is just the client)
+# ollama (optional, for local running)
+
+# Utilities
+python-dotenv>=1.0.0
+PyYAML>=6.0
+
+# For testing (optional)
+pytest>=7.0.0
+pytest-asyncio>=0.21.0

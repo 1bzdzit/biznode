@@ -1,0 +1,266 @@
+---
+title: System Requirements
+description: Hardware and software requirements for BizNode
+---
+
+# System Requirements
+
+BizNode is designed to run on minimal hardware, but certain requirements must be met for optimal performance.
+
+---
+
+## Hardware Requirements
+
+### Minimum Requirements
+
+| Component | Minimum | Recommended |
+|-----------|---------|-------------|
+| **USB Storage** | 32GB | 64GB+ |
+| **RAM** | 8GB | 16GB |
+| **CPU** | 4 cores | 8+ cores |
+| **Internet** | Required for Telegram/Email | Stable connection |
+
+### Recommended Setup
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    RECOMMENDED SETUP                        │
+├─────────────────────────────────────────────────────────────┤
+│  Hardware:                                                  │
+│  • 64GB USB 3.0/3.1 flash drive                            │
+│  • Host machine: 16GB RAM, 8-core CPU                     │
+│  • Reliable internet connection                            │
+├─────────────────────────────────────────────────────────────┤
+│  Software:                                                  │
+│  • Docker Desktop (Windows/Mac/Linux)                      │
+│  • Git for version control                                 │
+│  • Text editor (VS Code recommended)                       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Storage Breakdown
+
+```
+64GB USB Allocation:
+│
+├── Ollama Models (~4-8GB)
+│   └── qwen2.5: 4GB
+│   └── nomic-embed-text: ~500MB
+│
+├── Qdrant Storage (~10-20GB)
+│   └── Vector embeddings
+│   └── Search index
+│
+├── SQLite Database (~1GB)
+│   └── Business records
+│   └── Leads
+│   └── Associates
+│
+└── System & Docker (~5-10GB)
+    └── Docker images
+    └── Logs
+    └── Temp files
+```
+
+---
+
+## Software Requirements
+
+### Docker
+
+BizNode runs entirely in Docker containers.
+
+**Installation:**
+
+- **Windows**: [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- **Mac**: [Docker Desktop](https://www.docker.com/products/docker-desktop)
+- **Linux**: 
+  ```bash
+  curl -fsSL https://get.docker.com | sh
+  sudo systemctl enable docker
+  sudo systemctl start docker
+  ```
+
+**Minimum Docker Version:** 20.10+
+
+```bash
+docker --version
+# Should output: Docker version 20.10.0 or higher
+```
+
+### Docker Compose
+
+Included with Docker Desktop. For Linux:
+
+```bash
+docker-compose --version
+# Should output: docker-compose version 1.29.0 or higher
+```
+
+---
+
+## Ollama Requirements
+
+### What is Ollama?
+
+Ollama is the local LLM runtime that powers BizNode's reasoning capabilities.
+
+### Model Requirements
+
+| Model | Size | Purpose | RAM Usage |
+|-------|------|---------|-----------|
+| **qwen2.5** | 4GB | Main reasoning | ~6GB |
+| **nomic-embed-text** | ~500MB | Embeddings | ~1GB |
+
+### Testing Ollama
+
+```bash
+# After docker compose up
+docker compose exec ollama ollama list
+
+# Should show:
+# NAME                ID          SIZE      MODIFIED
+# qwen2.5:latest      abc123...   4.5GB     2 days ago
+```
+
+### Memory Optimization
+
+If running on limited RAM:
+
+```bash
+# Pull smaller model
+docker compose exec ollama ollama pull llama3:8b
+
+# Adjust .env
+LLM_MODEL=llama3:8b
+```
+
+---
+
+## Qdrant Requirements
+
+### What is Qdrant?
+
+Qdrant is a vector database for semantic search and similarity matching.
+
+### Storage Needs
+
+| Data Type | Approximate Size |
+|-----------|------------------|
+| 1,000 business notes | ~50MB |
+| 10,000 business notes | ~500MB |
+| 100,000 business notes | ~5GB |
+
+### Persistent Storage
+
+Qdrant data is stored in `./qdrant_storage/` on the host:
+
+```bash
+# Check storage usage
+du -sh qdrant_storage/
+
+# Backup
+cp -r qdrant_storage/ backup_qdrant_$(date +%Y%m%d)/
+```
+
+---
+
+## Network Requirements
+
+### Required Internet Access
+
+BizNode requires internet for:
+
+| Service | Purpose | Bandwidth |
+|---------|---------|-----------|
+| **Telegram API** | Bot communication | Low |
+| **SMTP** | Email notifications | Low |
+| **Ollama Download** | Initial model download | High (one-time) |
+
+### Offline Operation
+
+Once running, BizNode can operate with limited connectivity:
+
+```
+Online Required For:
+├── Telegram message send/receive
+├── Email delivery
+└── Model updates (optional)
+
+Offline Capable:
+├── LLM reasoning (local)
+├── Vector search (local)
+├── Database queries (local)
+└── Lead processing (local)
+```
+
+---
+
+## SMTP Requirements
+
+### Email Service Options
+
+| Provider | SMTP Host | Port | Notes |
+|----------|-----------|------|-------|
+| **Gmail** | smtp.gmail.com | 587 | Requires App Password |
+| **Outlook** | smtp.office365.com | 587 | Requires OAuth |
+| **Custom** | Your server | 587/465 | Standard SMTP |
+
+### Security Requirements
+
+- ✅ Use App Passwords (Gmail)
+- ✅ Enable 2-Factor Authentication
+- ✅ Use TLS/SSL
+- ❌ Don't use your main password
+
+---
+
+## Operating System Compatibility
+
+| OS | Support | Notes |
+|----|---------|-------|
+| **Windows 11** | ✅ Full | Docker Desktop |
+| **Windows 10** | ✅ Full | Docker Desktop |
+| **macOS 12+** | ✅ Full | Docker Desktop |
+| **Linux (Ubuntu 20.04+)** | ✅ Full | Docker Engine |
+| **Linux (ARM)** | ⚠️ Limited | Some compatibility issues |
+
+---
+
+## Performance Benchmarks
+
+### Typical Response Times
+
+| Operation | Time |
+|-----------|------|
+| LLM Response (Qwen2.5) | 2-5 seconds |
+| Vector Search | <100ms |
+| Database Query | <50ms |
+| Telegram Message | 1-2 seconds |
+
+### Scalability
+
+| Metric | Limit |
+|--------|-------|
+| Concurrent Users | 10-20 |
+| Notes in Memory | 100,000+ |
+| Vector Search | <100ms |
+| Daily Messages | Unlimited |
+
+---
+
+## Cloud vs USB
+
+### USB Mode (Recommended for Elementary)
+
+- All data on USB
+- No monthly fees
+- Full offline capability
+- Portable
+
+### Cloud Mode (Future Premium)
+
+- Federated memory
+- Auto-backup
+- Multi-device sync
+- Premium features

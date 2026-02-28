@@ -1,0 +1,301 @@
+---
+title: Autonomous Agent
+description: LangGraph orchestration and decision engine
+---
+
+# Autonomous Agent
+
+BizNode uses **LangGraph** for workflow orchestration. LangGraph enables complex, multi-step agent behaviors with built-in state management.
+
+---
+
+## LangGraph Overview
+
+LangGraph is a library for building **stateful, multi-agent applications** using LLMs.
+
+### Key Concepts
+
+| Concept | Description |
+|---------|-------------|
+| **Graph** | A directed workflow of nodes |
+| **Node** | A single step in the workflow |
+| **Edge** | Connections between nodes |
+| **State** | Shared data flowing through the graph |
+| **Conditional Edge** | Routing based on state |
+
+---
+
+## Agent Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    AUTONOMOUS AGENT ARCHITECTURE                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   ┌─────────────────────────────────────────────────────────┐  │
+│   │              TELEGRAM INPUT                                │  │
+│   │  User message, command, callback                          │  │
+│   └────────────────────────┬────────────────────────────────┘  │
+│                            │                                      │
+│                            ▼                                      │
+│   ┌─────────────────────────────────────────────────────────┐  │
+│   │              ORCHESTRATION LAYER                         │  │
+│   │                                                          │  │
+│   │  ┌─────────────────────────────────────────────────┐    │  │
+│   │  │              LANGGRAPH GRAPH                     │    │  │
+│   │  │                                                  │    │  │
+│   │  │  ┌─────────┐   ┌─────────┐   ┌─────────┐     │    │  │
+│   │  │  │ Classify│──▶│ Extract │──▶│  Store  │     │    │  │
+│   │  │  │ Intent  │   │  Data   │   │  Lead   │     │    │  │
+│   │  │  └─────────┘   └─────────┘   └────┬────┘     │    │  │
+│   │  │                                       │          │    │  │
+│   │  │                                       ▼          │    │  │
+│   │  │                               ┌─────────────┐    │    │  │
+│   │  │                               │   Decision  │    │    │  │
+│   │  │                               │   Engine    │    │    │  │
+│   │  │                               └──────┬──────┘    │    │  │
+│   │  │                                      │           │    │  │
+│   │  └──────────────────────────────────────┴───────────┘    │  │
+│   │                                                          │  │
+│   └────────────────────────┬────────────────────────────────┘  │
+│                            │                                      │
+│                            ▼                                      │
+│   ┌─────────────────────────────────────────────────────────┐  │
+│   │              OUTPUT LAYER                               │  │
+│   │  Telegram message, Email, Database update               │  │
+│   └─────────────────────────────────────────────────────────┘  │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Decision Engine
+
+### How It Works
+
+The decision engine evaluates every action through:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    DECISION ENGINE FLOW                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   ACTION PROPOSED                                                │
+│        │                                                        │
+│        ▼                                                        │
+│   ┌─────────────┐                                               │
+│   │  Is Valid?  │──No──▶ REJECT                                │
+│   └──────┬──────┘                                              │
+│          │Yes                                                    │
+│          ▼                                                      │
+│   ┌─────────────┐                                               │
+│   │Risk Assess  │ ◀── LLM evaluates risk level                  │
+│   └──────┬──────┘                                              │
+│          │                                                      │
+│    ┌─────┼─────┐                                                │
+│    │LOW  │HIGH │                                                │
+│    │     │     │                                                │
+│    ▼     ▼     ▼                                                │
+│ ┌─────┐ ┌─────────┐                                             │
+│ │EXEC │ │APPROVAL │                                            │
+│ │NOW  │ │REQUIRED │                                            │
+│ └─────┘ └─────────┘                                             │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Risk Scoring
+
+```python
+def assess_risk(action_description):
+    prompt = f"""
+    Categorize risk level as low, medium, or high:
+    
+    {action_description}
+    """
+    return ask_llm(prompt)
+```
+
+---
+
+## Action Execution
+
+### Execution Flow
+
+```python
+async def execute_action(action, risk_level):
+    if risk_level == "low":
+        # Auto-execute
+        return await do_action(action)
+    
+    elif risk_level == "medium":
+        # Execute and notify
+        result = await do_action(action)
+        await notify_owner(action, result)
+        return result
+    
+    else:  # high
+        # Require approval
+        await request_approval(action)
+        return {"status": "awaiting_approval"}
+```
+
+---
+
+## Owner Escalation
+
+### Escalation Criteria
+
+The AI escalates to the owner when:
+
+1. **Uncertain** - Can't determine best action
+2. **High Risk** - Above autonomy threshold
+3. **Failed** - Action failed and needs intervention
+4. **Requested** - Explicit owner input needed
+
+### Escalation Example
+
+```
+AI: "I've identified a potential partnership opportunity with 
+    ABC Logistics. Since this involves sharing business data,
+    I wanted to confirm before proceeding.
+    
+    Partner: ABC Logistics
+    Type: Logistics Partner
+    Risk: MEDIUM
+    
+    Should I proceed? (Yes/No)"
+```
+
+---
+
+## Continuous Learning Loop
+
+### How the Agent Learns
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    LEARNING LOOP                                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   ┌─────────┐                                                   │
+│   │ ACTION  │                                                   │
+│   │ TAKEN   │                                                   │
+│   └───┬─────┘                                                   │
+│       │                                                         │
+│       ▼                                                         │
+│   ┌─────────────┐                                               │
+│   │  OBSERVE    │ ◀── Monitor outcomes                          │
+│   └──────┬──────┘                                               │
+│          │                                                       │
+│          ▼                                                       │
+│   ┌─────────────┐                                               │
+│   │  ANALYZE    │ ◀── What worked?                              │
+│   │  PATTERNS   │    What didn't?                              │
+│   └──────┬──────┘                                               │
+│          │                                                       │
+│          ▼                                                       │
+│   ┌─────────────┐                                               │
+│   │  UPDATE     │ ◀── Adjust decision tree                     │
+│   │  MEMORY     │    Update preferences                        │
+│   └──────┬──────┘                                               │
+│          │                                                       │
+│          ▼                                                       │
+│   ┌─────────────┐                                               │
+│   │  IMPROVED   │                                               │
+│   │  DECISIONS  │──▶ Better next time                          │
+│   └─────────────┘                                               │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Learning Tracked
+
+| Learning Type | Data Source | Updates |
+|---------------|-------------|---------|
+| Outcome | Action results | Success rates |
+| Preferences | Owner responses | Approval patterns |
+| Context | Queries | Common patterns |
+| Relationships | Associate interactions | Partner fit |
+
+---
+
+## Agent Types
+
+### 1. Marketing Agent
+
+Handles lead collection and qualification.
+
+```python
+# Flow: Message → Intent → Extract → Store → Notify
+```
+
+### 2. Decision Agent
+
+Manages owner approvals and risk.
+
+```python
+# Flow: Action → Assess Risk → Approve/Execute → Log
+```
+
+### 3. Network Agent
+
+Coordinates associate relationships.
+
+```python
+# Flow: Opportunity → Find Associates → Draft → Send → Log
+```
+
+---
+
+## State Management
+
+### Graph State
+
+```python
+class AgentState(TypedDict):
+    # Input
+    raw_input: str
+    user_id: str
+    
+    # Processing
+    intent: str
+    extracted_data: Dict
+    
+    # Decision
+    risk_level: str
+    action_type: str
+    
+    # Output
+    status: str
+    response: str
+```
+
+### State Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                       STATE FLOW                                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   Node 1: intent_classifier(state)                              │
+│   ┌─────────────────────────────────────────────────────────┐  │
+│   │ state["raw_input"] = "I want partnership"               │  │
+│   │ state["intent"] = "partnership_request"                  │  │
+│   └─────────────────────────────────────────────────────────┘  │
+│                            │                                      │
+│                            ▼                                      │
+│   Node 2: extract_lead_data(state)                             │
+│   ┌─────────────────────────────────────────────────────────┐  │
+│   │ state["extracted_data"] = {name, business, contact}    │  │
+│   └─────────────────────────────────────────────────────────┘  │
+│                            │                                      │
+│                            ▼                                      │
+│   Node 3: store_lead(state)                                    │
+│   ┌─────────────────────────────────────────────────────────┐  │
+│   │ state["status"] = "stored"                             │  │
+│   └─────────────────────────────────────────────────────────┘  │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```

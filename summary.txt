@@ -1,0 +1,51 @@
+Phase 1 — Bug Fixes (10 fixes)
+Fix	File
+Deleted duplicate typo file	core/verfication.py → deleted
+Deleted stale duplicate	identity/docker-compose.yml → deleted
+Renamed Dockerfile	docker/bot/dockerfile.txt → Dockerfile
+Fixed hardcoded password	boot.py — now uses getpass / NODE_PASSWORD env var
+Added BOT_TOKEN env var + health checks + restart policies + separate volumes	docker/docker-compose.yml
+Fixed identity_exists() to check all 3 files	identity/identity.py
+Added error handling, rate limiting, input sanitization	docker/bot/run_bot.py
+Added qdrant-client dependency	docker/bot/requirements.txt
+Created .gitignore	C:/1bzbiznode/.gitignore
+Added health check wait loop to boot	boot.py
+Phase 2 — Core Infrastructure
+New File	Purpose
+config/node_config.yaml	Centralized YAML configuration for all node settings
+.env.example	Template for secrets (BOT_TOKEN, NODE_PASSWORD, etc.)
+identity/wallet.py	Polygon/Ethereum wallet generation with Fernet-encrypted private key storage
+docker/bot/run_bot.py	Full RAG pipeline: embed → Qdrant search → inject context → Ollama LLM
+tests/test_identity.py	7 unit tests for identity generation and identity_exists()
+tests/test_verification.py	5 unit tests for verification modes
+tests/test_badge.py	5 unit tests for badge mapping
+tests/test_wallet.py	7 unit tests for wallet generation, encryption, and roundtrip
+Phase 3 — Blockchain + Registry
+New File	Purpose
+contracts/BizNodeRegistry.sol	Production Solidity contract: registerNode, verifyNode (payable), addStake, withdrawStake, deregisterNode, resolveDNS, getNode, DAO upgrade path
+contracts/abi.json	Full ABI for all contract functions and events
+contracts/deploy.py	Deployment script using web3.py + py-solc-x, auto-updates node_config.yaml
+registry/models.py	SQLAlchemy ORM: NodeRecord with trust scores, DNS, stake, uptime, AI quality
+registry/trust_engine.py	Dynamic trust scoring: stake (log-scaled) + uptime + AI quality + endorsements − complaints + verified bonus → ENTERPRISE/TRUSTED/VERIFIED/UNVERIFIED
+registry/event_listener.py	Web3.py polling loop for NodeRegistered, NodeVerified, StakeAdded, StakeWithdrawn, NodeDeregistered events
+registry/dns_resolver.py	BizNodeDNSResolver: on-chain resolveDNS() → off-chain metadata → DNSRecord
+registry/main.py	FastAPI app with 12 endpoints: node CRUD, DNS resolution, trust endorsement/complaint, heartbeat, admin rescore
+README.md	Full setup guide, architecture diagram, directory structure, environment variables
+To Run
+# 1. Copy and fill secrets
+cp .env.example .env
+
+# 2. Boot node (identity + Docker stack)
+python boot.py
+
+# 3. Run tests
+pytest tests/ -v
+
+# 4. Start registry
+cd registry && uvicorn registry.main:app --port 8000
+
+# 5. Deploy contract (after setting WALLET_PRIVATE_KEY in .env)
+python contracts/deploy.py
+
+# 6. Start blockchain event listener
+python -m registry.event_listener

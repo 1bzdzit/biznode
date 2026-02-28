@@ -1,0 +1,52 @@
+# BizNode Node Configuration
+# ============================================================
+# Copy this file and adjust values for your deployment.
+# Secrets (BOT_TOKEN, NODE_PASSWORD, etc.) must be set in .env
+# ============================================================
+
+node:
+  # Operating mode: local | registry | blockchain
+  mode: registry
+  # Human-readable alias for this node (used as 1bz subdomain)
+  alias: mynode
+  # Off-chain registry API base URL
+  registry_api: https://registry.1bz.io
+
+ai:
+  # Ollama LLM endpoint (internal Docker URL when running in compose)
+  ollama_url: http://localhost:11434
+  # Qdrant vector DB endpoint
+  qdrant_url: http://localhost:6333
+  # LLM model to use (must be pulled in Ollama)
+  model: llama3
+  # Qdrant collection name for conversation memory
+  qdrant_collection: biznode_memory
+  # Embedding vector dimension (must match the model used)
+  embed_dim: 384
+
+blockchain:
+  # Target network: polygon | polygon-mumbai | ethereum
+  network: polygon
+  # Polygon RPC endpoint
+  rpc_url: https://polygon-rpc.com
+  # Deployed BizNodeRegistry contract address (set after deployment)
+  contract_address: ""
+  # Path to contract ABI JSON
+  abi_path: contracts/abi.json
+
+dns:
+  # Top-level domain controlled by this network
+  tld: 1bz
+
+bot:
+  # Maximum requests per user per window
+  rate_limit_max: 5
+  # Rate limit window in seconds
+  rate_limit_window: 60
+  # Maximum input length in characters
+  max_input_length: 2000
+
+logging:
+  level: INFO
+  # Log file path (relative to project root)
+  file: logs/node.log

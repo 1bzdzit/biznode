@@ -1,0 +1,237 @@
+---
+title: RAG Query Graph
+description: Retrieval-Augmented Generation pipeline
+---
+
+# RAG Query Graph
+
+The **RAG Query Graph** is BizNode's pipeline for answering user queries using both semantic search and LLM generation.
+
+---
+
+## What is RAG?
+
+**Retrieval-Augmented Generation (RAG)** combines:
+- **Retrieval** - Finding relevant information from a knowledge base
+- **Augmentation** - Adding context to the LLM prompt
+- **Generation** - Producing a natural language response
+
+---
+
+## Query Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    RAG QUERY FLOW                                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   USER QUERY                                                    │
+│   "Show marketing strategies for textile exports"               │
+│         │                                                        │
+│         ▼                                                        │
+│   ┌─────────────┐                                               │
+│   │ 1. EMBED    │  Convert query to vector                      │
+│   │    QUERY    │  using embedding model                        │
+│   └──────┬──────┘                                               │
+│          │                                                       │
+│          ▼                                                       │
+│   ┌─────────────┐                                               │
+│   │ 2. SEARCH   │  Query Qdrant for                             │
+│   │   QDRANT    │  similar vectors                              │
+│   └──────┬──────┘                                               │
+│          │                                                       │
+│          ▼                                                       │
+│   ┌─────────────┐                                               │
+│   │ 3. FETCH    │  Get structured data                          │
+│   │  STRUCTURED │  from SQLite                                  │
+│   └──────┬──────┘                                               │
+│          │                                                       │
+│          ▼                                                       │
+│   ┌─────────────┐                                               │
+│   │ 4. BUILD    │  Combine semantic +                           │
+│   │   CONTEXT   │  structured results                           │
+│   └──────┬──────┘                                               │
+│          │                                                       │
+│          ▼                                                       │
+│   ┌─────────────┐                                               │
+│   │ 5. GENERATE │  Ask LLM with                                 │
+│   │  RESPONSE   │  context                                      │
+│   └──────┬──────┘                                               │
+│          │                                                       │
+│          ▼                                                       │
+│   RESPONSE                                                       │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Step-by-Step
+
+### Step 1: Embed Query
+
+```python
+from services.llm_service import generate_embedding
+
+def embed_query(state):
+    query = state["query"]
+    embedding = generate_embedding(query)
+    state["embedding"] = embedding
+    return state
+```
+
+### Step 2: Search Qdrant
+
+```python
+from memory.qdrant_client import QdrantMemory
+
+def search_qdrant(state):
+    qdrant = QdrantMemory()
+    results = qdrant.search_similar(
+        vector=state["embedding"],
+        limit=5,
+        score_threshold=0.5
+    )
+    state["semantic_results"] = results
+    return state
+```
+
+### Step 3: Fetch Structured Data
+
+```python
+from memory.database import get_business
+
+def fetch_structured_data(state):
+    structured_results = []
+    
+    for result in state["semantic_results"]:
+        node_id = result["payload"]["node_id"]
+        business = get_business(node_id)
+        if business:
+            structured_results.append(business)
+    
+    state["structured_results"] = structured_results
+    return state
+```
+
+### Step 4: Build Context
+
+```python
+def construct_context(state):
+    context_parts = []
+    
+    # Semantic results
+    for result in state["semantic_results"]:
+        context_parts.append(
+            f"Note: {result['payload']['title']}\n"
+            f"Summary: {result['payload']['summary']}"
+        )
+    
+    # Structured results
+    for business in state["structured_results"]:
+        context_parts.append(
+            f"Business: {business['business_name']}\n"
+            f"Status: {business['status']}"
+        )
+    
+    state["context"] = "\n\n".join(context_parts)
+    return state
+```
+
+### Step 5: Generate Response
+
+```python
+from services.llm_service import generate_response
+
+def generate_rag_response(state):
+    response = generate_response(
+        context=state["context"],
+        query=state["query"]
+    )
+    state["response"] = response
+    return state
+```
+
+---
+
+## Complete Graph
+
+```python
+from langgraph.graph import StateGraph, END
+
+def create_rag_graph():
+    graph = StateGraph(RAGState)
+    
+    graph.add_node("embed_query", embed_query)
+    graph.add_node("search_qdrant", search_qdrant)
+    graph.add_node("fetch_structured", fetch_structured_data)
+    graph.add_node("construct_context", construct_context)
+    graph.add_node("generate_response", generate_rag_response)
+    
+    graph.set_entry_point("embed_query")
+    graph.add_edge("embed_query", "search_qdrant")
+    graph.add_edge("search_qdrant", "fetch_structured")
+    graph.add_edge("fetch_structured", "construct_context")
+    graph.add_edge("construct_context", "generate_response")
+    graph.add_edge("generate_response", END)
+    
+    return graph.compile()
+```
+
+---
+
+## Usage
+
+```python
+from graphs.rag_query_graph import run_rag_query
+
+# Simple query
+result = run_rag_query("Show marketing strategies for textile exports")
+
+print(result["response"])
+```
+
+---
+
+## Conversation Memory
+
+### Adding Context
+
+The graph can maintain conversation history:
+
+```python
+class RAGState(TypedDict):
+    query: str
+    conversation_history: List[Dict]  # Previous messages
+    # ... other fields
+```
+
+### Context Building with History
+
+```python
+def build_context_with_history(state):
+    # Get recent conversation
+    history = state.get("conversation_history", [])
+    
+    # Build context from history
+    history_str = "\n".join([
+        f"User: {m['user']}\nAssistant: {m['assistant']}"
+        for m in history[-5:]  # Last 5 exchanges
+    ])
+    
+    # Combine with current context
+    state["context"] = f"Previous conversation:\n{history_str}\n\n{state['context']}"
+    return state
+```
+
+---
+
+## Performance
+
+| Operation | Typical Time |
+|-----------|-------------|
+| Embed query | 100-500ms |
+| Qdrant search | <50ms |
+| Fetch SQLite | <20ms |
+| LLM response | 2-5s |
+| **Total** | **~3-6 seconds** |

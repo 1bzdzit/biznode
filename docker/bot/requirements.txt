@@ -1,0 +1,4 @@
+python-telegram-bot==20.7
+requests
+cryptography
+qdrant-client>=1.7.0

@@ -1,0 +1,77 @@
+# BizNode Docker Compose — Root Entry Point
+# ==========================================
+# This is the canonical compose file. Run from project root:
+#   docker compose up -d
+#
+# It delegates to docker/docker-compose.yml which contains
+# the full stack: Ollama + Qdrant + BizNode bot.
+#
+# Requires .env file with at minimum:
+#   BOT_TOKEN=your_telegram_bot_token
+
+version: "3.9"
+
+services:
+
+  qdrant:
+    image: qdrant/qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ./memory/qdrant:/qdrant/storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./memory/ollama:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  bot:
+    build:
+      context: ./docker/bot
+      dockerfile: Dockerfile
+    depends_on:
+      qdrant:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - TELEGRAM_BOT_TOKEN=${BOT_TOKEN}
+      - OLLAMA_URL=http://ollama:11434/api/generate
+      - OLLAMA_EMBED_URL=http://ollama:11434/api/embeddings
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-nomic-embed-text}
+      - EMBEDDING_SIZE=768
+      - SQLITE_PATH=/app/memory/biznode.db
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - AGENT_EMAIL=${AGENT_EMAIL:-}
+      - OWNER_TELEGRAM_ID=${OWNER_TELEGRAM_ID:-}
+      - AUTONOMY_LEVEL=${AUTONOMY_LEVEL:-1}
+    volumes:
+      - ./identity:/app/identity:ro
+      - ./memory:/app/memory
+      - ./logs:/app/logs
+    restart: unless-stopped

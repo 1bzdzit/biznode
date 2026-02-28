@@ -1,0 +1,56 @@
+---
+title: Email Configuration
+description: Set up SMTP for notifications
+---
+
+# Email Configuration
+
+BizNode uses SMTP for email notifications to owners and associates.
+
+---
+
+## Gmail Setup
+
+### Step 1: Enable 2FA
+
+1. Go to [Google Account](https://myaccount.google.com)
+2. Security → 2-Step Verification → Turn on
+
+### Step 2: Create App Password
+
+1. Go to Google Account → Security
+2. App passwords → Create new
+3. Name: "BizNode"
+4. Copy the 16-character password
+
+### Step 3: Configure .env
+
+```bash
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASSWORD=xxxx xxxx xxxx xxxx
+AGENT_EMAIL=ai@yourbiznode.1bz
+```
+
+---
+
+## Custom Domain (Recommended)
+
+### Using Gmail Alternative
+
+| Provider | Host | Port |
+|----------|------|------|
+| Zoho Mail | smtp.zoho.com | 587 |
+| ProtonMail | smtp.protonmail.com | 587 |
+| Outlook | smtp.office365.com | 587 |
+
+---
+
+## Security Best Practices
+
+- ✅ Use App Passwords
+- ✅ Enable 2FA
+- ✅ Use dedicated email for AI
+- ❌ Don't use main password
+- ❌ Don't commit credentials

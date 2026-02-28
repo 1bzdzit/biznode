@@ -1,0 +1,186 @@
+[
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true,  "internalType": "bytes32", "name": "nodeHash",  "type": "bytes32"},
+      {"indexed": true,  "internalType": "address", "name": "wallet",    "type": "address"},
+      {"indexed": false, "internalType": "string",  "name": "dnsName",   "type": "string"},
+      {"indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256"}
+    ],
+    "name": "NodeRegistered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true,  "internalType": "bytes32", "name": "nodeHash",  "type": "bytes32"},
+      {"indexed": true,  "internalType": "address", "name": "wallet",    "type": "address"},
+      {"indexed": false, "internalType": "uint256", "name": "timestamp", "type": "uint256"}
+    ],
+    "name": "NodeVerified",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true,  "internalType": "bytes32", "name": "nodeHash", "type": "bytes32"},
+      {"indexed": true,  "internalType": "address", "name": "wallet",   "type": "address"},
+      {"indexed": false, "internalType": "uint256", "name": "amount",   "type": "uint256"},
+      {"indexed": false, "internalType": "uint256", "name": "newTotal", "type": "uint256"}
+    ],
+    "name": "StakeAdded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true,  "internalType": "bytes32", "name": "nodeHash", "type": "bytes32"},
+      {"indexed": true,  "internalType": "address", "name": "wallet",   "type": "address"},
+      {"indexed": false, "internalType": "uint256", "name": "amount",   "type": "uint256"}
+    ],
+    "name": "StakeWithdrawn",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true, "internalType": "bytes32", "name": "nodeHash", "type": "bytes32"}
+    ],
+    "name": "NodeDeregistered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": false, "internalType": "uint256", "name": "oldFee", "type": "uint256"},
+      {"indexed": false, "internalType": "uint256", "name": "newFee", "type": "uint256"}
+    ],
+    "name": "VerificationFeeUpdated",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {"internalType": "bytes32", "name": "nodeHash", "type": "bytes32"},
+      {"internalType": "string",  "name": "dnsName",  "type": "string"}
+    ],
+    "name": "registerNode",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "bytes32", "name": "nodeHash", "type": "bytes32"}
+    ],
+    "name": "verifyNode",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "bytes32", "name": "nodeHash", "type": "bytes32"}
+    ],
+    "name": "addStake",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "bytes32", "name": "nodeHash", "type": "bytes32"},
+      {"internalType": "uint256", "name": "amount",   "type": "uint256"}
+    ],
+    "name": "withdrawStake",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "bytes32", "name": "nodeHash", "type": "bytes32"}
+    ],
+    "name": "deregisterNode",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "string", "name": "dnsName", "type": "string"}
+    ],
+    "name": "resolveDNS",
+    "outputs": [
+      {"internalType": "bytes32", "name": "", "type": "bytes32"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "bytes32", "name": "nodeHash", "type": "bytes32"}
+    ],
+    "name": "getNode",
+    "outputs": [
+      {"internalType": "address", "name": "wallet",       "type": "address"},
+      {"internalType": "string",  "name": "dnsName",      "type": "string"},
+      {"internalType": "bool",    "name": "verified",     "type": "bool"},
+      {"internalType": "uint256", "name": "stakeAmount",  "type": "uint256"},
+      {"internalType": "uint256", "name": "registeredAt", "type": "uint256"},
+      {"internalType": "bool",    "name": "active",       "type": "bool"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "uint256", "name": "newFee", "type": "uint256"}
+    ],
+    "name": "updateVerificationFee",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "address payable", "name": "recipient", "type": "address"},
+      {"internalType": "uint256",         "name": "amount",    "type": "uint256"}
+    ],
+    "name": "withdrawFees",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "address", "name": "newOwner", "type": "address"}
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "verificationFee",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "stateMutability": "payable",
+    "type": "receive"
+  }
+]

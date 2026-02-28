@@ -1,0 +1,268 @@
+---
+title: Project Structure
+description: Understanding the BizNode folder structure
+---
+
+# Project Structure
+
+This document explains the BizNode directory structure to help developers understand the architecture.
+
+---
+
+## Root Directory
+
+```
+biznode/
+├── boot.py                     # Main entry point
+├── .env.example                # Environment template
+├── .gitignore                  # Git ignore rules
+├── README.md                   # Main documentation
+├── requirements.txt            # Python dependencies
+├── docker-compose.yml          # Docker orchestration
+│
+├── docs/                       # Documentation (this)
+├── config/                     # Configuration files
+├── identity/                   # Cryptographic identity
+├── core/                      ├── bots/                       # Bot # Core utilities
+ launchers
+├── docker/                     # Docker configs
+├── registry/                   # Off-chain registry
+├── contracts/                  # Smart contracts
+├── tests/                      # Unit tests
+├── logs/                       # Log files
+│
+├── services/                   # Core services ⭐
+├── memory/                     # Memory layer ⭐
+├── agent/                      # AI agents ⭐
+└── graphs/                     # Workflow graphs ⭐
+```
+
+---
+
+## Core Directories
+
+### `services/`
+
+Contains all external integrations and utility services.
+
+```
+services/
+├── __init__.py
+├── llm_service.py         # Ollama (LLM) wrapper
+├── telegram_service.py    # Telegram bot API
+└── email_service.py       # SMTP email
+```
+
+**Key Files:**
+
+| File | Purpose |
+|------|---------|
+| [`llm_service.py`](../services/llm_service.py) | Wrapper for Ollama, handles all LLM interactions |
+| [`telegram_service.py`](../services/telegram_service.py) | Telegram Bot API client |
+| [`email_service.py`](../services/email_service.py) | SMTP email sender |
+
+---
+
+### `memory/`
+
+The AI Obsidian Memory layer - combines SQLite and Qdrant.
+
+```
+memory/
+├── __init__.py
+├── database.py            # SQLite operations
+├── qdrant_client.py       # Vector database
+└── obsidian_layer.py      # Intelligent memory
+```
+
+**Key Files:**
+
+| File | Purpose |
+|------|---------|
+| [`database.py`](../memory/database.py) | SQLite CRUD operations, all table definitions |
+| [`qdrant_client.py`](../memory/qdrant_client.py) | Vector storage and similarity search |
+| [`obsidian_layer.py`](../memory/obsidian_layer.py) | Auto-summarize, auto-link, auto-tag |
+
+---
+
+### `agent/`
+
+LangGraph autonomous agent workflows.
+
+```
+agent/
+├── __init__.py
+├── marketing_graph.py     # Lead collection
+├── decision_graph.py      # Owner authority
+└── network_graph.py       # Associate networking
+```
+
+**Key Files:**
+
+| File | Purpose |
+|------|---------|
+| [`marketing_graph.py`](../agent/marketing_graph.py) | Information Collection Graph |
+| [`decision_graph.py`](../agent/decision_graph.py) | Decision Authority Graph |
+| [`network_graph.py`](../agent/network_graph.py) | 1bz Associate Network Graph |
+
+---
+
+### `graphs/`
+
+Additional LangGraph workflows.
+
+```
+graphs/
+├── __init__.py
+├── rag_query_graph.py     # RAG query pipeline
+├── router_graph.py        # Multi-bot routing
+└── sync_graph.py          # Network sync
+```
+
+**Key Files:**
+
+| File | Purpose |
+|------|---------|
+| [`rag_query_graph.py`](../graphs/rag_query_graph.py) | RAG Query Pipeline |
+| [`router_graph.py`](../graphs/router_graph.py) | Multi-Bot Router |
+| [`sync_graph.py`](../graphs/sync_graph.py) | 1bz Network Sync |
+
+---
+
+## Supporting Directories
+
+### `config/`
+
+```
+config/
+└── node_config.yaml       # Node configuration
+```
+
+### `identity/`
+
+```
+identity/
+├── identity.py            # Ed25519 key generation
+└── wallet.py             # Polygon wallet
+```
+
+### `core/`
+
+```
+core/
+├── badge.py              # Trust badge display
+└── verification.py       # Verification logic
+```
+
+### `bots/`
+
+```
+bots/
+└── launcher.py           # Docker compose launcher
+```
+
+### `docker/`
+
+```
+docker/
+├── docker-compose.yml
+└── bot/
+    ├── Dockerfile
+    ├── run_bot.py
+    └── requirements.txt
+```
+
+### `registry/`
+
+FastAPI-based off-chain registry system.
+
+```
+registry/
+├── __init__.py
+├── main.py               # FastAPI app
+├── models.py             # SQLAlchemy models
+├── trust_engine.py       # Trust scoring
+├── event_listener.py     # Blockchain events
+├── dns_resolver.py       # 1bz DNS
+└── requirements.txt
+```
+
+### `contracts/`
+
+Solidity smart contracts.
+
+```
+contracts/
+├── BizNodeRegistry.sol   # Main contract
+├── deploy.py            # Deployment script
+└── abi.json             # Contract ABI
+```
+
+---
+
+## Data Directories
+
+These are created at runtime:
+
+```
+logs/                     # Application logs
+memory/                   # SQLite database
+qdrant_storage/          # Vector database
+```
+
+---
+
+## File Naming Conventions
+
+| Convention | Example | Usage |
+|------------|---------|-------|
+| `snake_case.py` | `llm_service.py` | Python files |
+| `PascalCase.py` | `ObsidianLayer.py` | Classes |
+| `kebab-case.mdx` | `quickstart.mdx` | Documentation |
+
+---
+
+## Import Structure
+
+```python
+# Services
+from services.llm_service import ask_llm, generate_embedding
+from services.telegram_service import TelegramService
+from services.email_service import EmailService
+
+# Memory
+from memory.database import create_business, get_lead
+from memory.qdrant_client import QdrantMemory
+from memory.obsidian_layer import AIObsidianLayer
+
+# Agents
+from agent.marketing_graph import run_marketing_graph
+from agent.decision_graph import run_decision_graph
+from agent.network_graph import run_network_graph
+
+# Graphs
+from graphs.rag_query_graph import run_rag_query
+from graphs.router_graph import route_query
+from graphs.sync_graph import run_sync
+```
+
+---
+
+## Development Workflow
+
+```
+1. Modify code in:
+   ├── services/     (APIs)
+   ├── memory/       (Storage)
+   ├── agent/        (Workflows)
+   └── graphs/       (Pipelines)
+
+2. Test locally:
+   docker compose up -d --build
+
+3. View logs:
+   docker compose logs -f biznode
+
+4. Debug:
+   docker compose exec biznode python -c "import my_module; ..."
+```

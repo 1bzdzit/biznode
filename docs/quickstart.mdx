@@ -1,0 +1,241 @@
+---
+title: Quick Start
+description: Get BizNode running in 5 minutes
+---
+
+# Quick Start Guide
+
+Get your autonomous AI business agent running in under 5 minutes.
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+- ✅ Git installed
+- ✅ Docker Desktop installed and running
+- ✅ A Telegram account
+- ✅ A 64GB USB drive (recommended)
+
+---
+
+## Step 1: Clone the Repository
+
+```bash
+git clone https://github.com/your-repo/biznode.git
+cd biznode
+```
+
+---
+
+## Step 2: Configure Environment Variables
+
+Copy the example environment file:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` with your settings:
+
+```bash
+# Required: Telegram Bot Token
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+
+# Required: Your Telegram User ID
+OWNER_TELEGRAM_ID=your_telegram_id
+
+# Optional: Email Settings (for Gmail use app password)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your_email@gmail.com
+SMTP_PASSWORD=your_app_password
+AGENT_EMAIL=ai@yourbiznode.1bz
+```
+
+---
+
+## Step 3: Set Up Telegram Bot
+
+1. Open Telegram and search for **@BotFather**
+2. Send `/newbot` to create a new bot
+3. Follow the prompts to name your bot
+4. Copy the **API Token** provided
+5. Add the token to your `.env` file
+
+```bash
+TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
+```
+
+---
+
+## Step 4: Set Up AI Email (Optional)
+
+For Gmail:
+1. Go to Google Account → Security
+2. Enable 2-Step Verification
+3. Go to App Passwords
+4. Create a new app password for "BizNode"
+5. Use that password in your `.env`
+
+---
+
+## Step 5: Start Docker Compose
+
+```bash
+docker compose up -d
+```
+
+This will start:
+- **Ollama** - Local LLM (Qwen2.5)
+- **Qdrant** - Vector database
+- **BizNode Agent** - Main application
+
+Check status:
+
+```bash
+docker compose ps
+```
+
+Expected output:
+
+```
+NAME                IMAGE               STATUS
+biznode-ollama      ollama/ollama       Up
+biznode-qdrant      qdrant/qdrant       Up
+biznode             biznode/app         Up
+```
+
+---
+
+## Step 6: Initialize the Database
+
+```bash
+docker compose exec biznode python -c "from memory.database import init_db; init_db()"
+```
+
+---
+
+## Step 7: Configure Agent Identity
+
+Create a Python script to set up your AI agent:
+
+```python
+from memory.database import save_agent_identity
+
+identity = {
+    "agent_name": "MyBizNode",
+    "agent_email": "ai@mybiznode.1bz",
+    "telegram_bot_token": "YOUR_BOT_TOKEN",
+    "owner_telegram_id": "YOUR_TELEGRAM_ID",
+    "owner_email": "you@example.com",
+    "autonomy_level": 1  # 1=assistive, 2=semi-auto, 3=full
+}
+save_agent_identity(identity)
+```
+
+Run it:
+
+```bash
+docker compose exec biznode python setup_identity.py
+```
+
+---
+
+## Step 8: Test the System
+
+### Check Status
+
+Send `/status` to your Telegram bot. You should receive:
+
+```
+🤖 BizNode Status
+
+✅ System: Online
+✅ LLM: Ready
+✅ Memory: Connected
+✅ Database: OK
+```
+
+---
+
+## Step 9: Send First Message
+
+Try sending a message to your bot:
+
+```
+Hi! I'm interested in your textile export services. My name is John and my company is ABC Textiles. You can reach me at john@abctextiles.com
+```
+
+The AI should:
+1. Classify this as a lead
+2. Extract the information
+3. Store in database
+4. Notify you (the owner) via Telegram
+
+---
+
+## Common Commands
+
+| Command | Description |
+|---------|-------------|
+| `/start` | Initialize the bot |
+| `/status` | Check system health |
+| `/help` | Show available commands |
+| `/register [business_name]` | Register a new business |
+| `/search [query]` | Search memory |
+
+---
+
+## Troubleshooting
+
+### Docker Not Starting
+
+```bash
+# Check Docker status
+docker info
+
+# Restart Docker
+# (Windows) Restart Docker Desktop
+# (Linux) sudo systemctl restart docker
+```
+
+### Ollama Not Responding
+
+```bash
+# Pull the model explicitly
+docker compose exec ollama ollama pull qwen2.5
+
+# Check logs
+docker compose logs ollama
+```
+
+### Qdrant Connection Error
+
+```bash
+# Check if Qdrant is running
+docker compose ps
+
+# Restart Qdrant
+docker compose restart qdrant
+
+# Check logs
+docker compose logs qdrant
+```
+
+### Telegram Bot Not Responding
+
+1. Verify bot token is correct in `.env`
+2. Check the bot has been started (/start in Telegram)
+3. Review logs: `docker compose logs biznode`
+
+---
+
+## Next Steps
+
+Now that your BizNode is running:
+
+1. 📖 Read [System Requirements](/docs/system-requirements) for hardware recommendations
+2. 🔧 Configure [Telegram Bot](/docs/telegram-bot-setup) in detail
+3. 📧 Set up [Email Configuration](/docs/email-configuration)
+4. 🧠 Learn about [AI Obsidian Memory](/docs/ai-obsidian-memory)
+5. 🤖 Explore [Autonomous Agents](/docs/autonomous-agent)

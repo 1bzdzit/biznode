@@ -1,0 +1,310 @@
+# BizNode Automation Layer
+
+BizNode now includes a powerful **Automation Layer** that transforms it from a Telegram-based RAG AI node into a full **Autonomous Digital Business Operator** capable of planning, executing, monitoring, and learning from workflows.
+
+---
+
+## Overview
+
+The Automation Layer provides:
+
+- **Task Planning** - AI-powered break down of goals into executable steps
+- **Tool Execution** - Structured tool-based automation
+- **Persistent Memory** - Learning from past executions
+- **Background Scheduling** - Recurring tasks and automation
+- **Workflow Engine** - Business process automation
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    User Interface                            │
+│         (Telegram / API / Webhook)                          │
+└─────────────────────────────┬───────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Agent Loop                                │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │
+│  │   Planner     │→ │   Executor   │→ │  Evaluator   │    │
+│  │  (Ollama)    │  │  (Tools)     │  │   (LLM)      │    │
+│  └──────────────┘  └──────────────┘  └──────────────┘    │
+└─────────────────────────────┬───────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Tool Registry                             │
+│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ │
+│  │   DB   │ │ Email  │ │ Telegram│ │ Memory  │ │  Web   │ │
+│  │  Tool  │ │  Tool  │ │  Tool  │ │  Tool   │ │ Hook   │ │
+│  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘ │
+└─────────────────────────────┬───────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    Persistence Layer                         │
+│     SQLite (Tasks, Steps, Logs) + Qdrant (Memory)          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Components
+
+### 1. Planner
+
+The planner breaks down user goals into structured tool-based steps using Ollama.
+
+```python
+from automation import Planner
+
+planner = Planner()
+plan = planner.create_plan("Send a reminder to overdue clients")
+```
+
+### 2. Executor
+
+The executor runs the planned steps and logs results.
+
+```python
+from automation import Executor
+
+executor = Executor()
+result = executor.execute_plan(task_id, plan)
+```
+
+### 3. Agent Loop
+
+The main loop that orchestrates planning → execution → evaluation → learning.
+
+```python
+from automation import AgentLoop
+
+agent = AgentLoop()
+result = agent.run(
+    user_id="user123",
+    goal="Check invoices and send reminders",
+    context={"business_id": "biz456"}
+)
+```
+
+### 4. Tool Registry
+
+Central registry of available automation tools.
+
+```python
+from automation import list_tools, get_tool
+
+# List all available tools
+tools = list_tools()
+print(tools)
+
+# Get a specific tool
+email_tool = get_tool("send_email")
+```
+
+---
+
+## Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `query_db` | Execute SQL queries on SQLite |
+| `insert_db` | Insert records into database |
+| `update_db` | Update database records |
+| `read_file` | Read files from filesystem |
+| `write_file` | Write files to filesystem |
+| `send_email` | Send emails via SMTP |
+| `send_telegram` | Send Telegram messages |
+| `search_memory` | Search AI Obsidian memory |
+| `recall` | Recall past task executions |
+| `create_reminder` | Create scheduled reminders |
+| `schedule_task` | Schedule recurring tasks |
+| `webhook` | Make HTTP requests |
+| `api_call` | Call business APIs |
+
+---
+
+## Database Schema
+
+The automation layer adds these tables to SQLite:
+
+```sql
+-- Tasks table
+CREATE TABLE tasks (
+    id TEXT PRIMARY KEY,
+    user_id TEXT,
+    goal TEXT NOT NULL,
+    plan_json TEXT,
+    status TEXT DEFAULT 'pending',
+    result_json TEXT,
+    error_message TEXT,
+    created_at TEXT
+);
+
+-- Task steps
+CREATE TABLE task_steps (
+    id TEXT PRIMARY KEY,
+    task_id TEXT,
+    step_order INTEGER,
+    tool_name TEXT,
+    input_data TEXT,
+    output_data TEXT,
+    status TEXT DEFAULT 'pending'
+);
+
+-- Tool logs
+CREATE TABLE tool_logs (
+    id TEXT PRIMARY KEY,
+    task_id TEXT,
+    tool_name TEXT,
+    request_payload TEXT,
+    response_payload TEXT,
+    execution_time_ms INTEGER,
+    success INTEGER
+);
+
+-- Agent memory
+CREATE TABLE agent_memory_index (
+    id TEXT PRIMARY KEY,
+    task_id TEXT,
+    content TEXT,
+    memory_type TEXT,
+    importance_score REAL
+);
+
+-- Scheduled tasks
+CREATE TABLE scheduled_tasks (
+    id TEXT PRIMARY KEY,
+    task_name TEXT,
+    interval_seconds INTEGER,
+    action_json TEXT,
+    enabled INTEGER DEFAULT 1,
+    next_run TEXT
+);
+```
+
+---
+
+## Usage Examples
+
+### Simple Automation
+
+```python
+from automation import run_agent_goal
+
+# Run a goal
+result = run_agent_goal(
+    user_id="user123",
+    goal="Check overdue invoices and send reminders"
+)
+
+print(result)
+```
+
+### Scheduling Recurring Tasks
+
+```python
+from automation import get_scheduler
+
+scheduler = get_scheduler()
+
+# Schedule a task to run every hour
+scheduler.schedule_interval(
+    task_name="hourly_status_check",
+    interval_seconds=3600,
+    action={
+        "type": "agent_goal",
+        "goal": "Check system status",
+        "context": {"check_type": "health"}
+    }
+)
+
+# Start the scheduler
+scheduler.start()
+```
+
+### Custom Tool Execution
+
+```python
+from automation import get_tool
+
+# Get a tool
+email_tool = get_tool("send_email")
+
+# Run it
+result = email_tool.run(
+    to="client@example.com",
+    subject="Invoice Reminder",
+    body="Your invoice is overdue."
+)
+```
+
+---
+
+## Learning System
+
+BizNode learns from past executions:
+
+1. **Task outcomes** are stored in the agent memory
+2. **Failed attempts** are logged for analysis
+3. **Tool usage patterns** are tracked
+4. **Similar tasks** can be recalled for context
+
+```python
+from tools import RecallTool
+
+recall = RecallTool()
+past_tasks = recall.run(task_type="invoice_reminder")
+```
+
+---
+
+## Integration with Telegram
+
+The automation layer integrates with the Telegram bot:
+
+```python
+# In your Telegram handler
+from automation import run_agent_goal
+
+@bot.message_handler(commands=['do'])
+def handle_do_command(message):
+    goal = message.text[4:]  # Get goal after /do
+    
+    result = run_agent_goal(
+        user_id=str(message.chat.id),
+        goal=goal
+    )
+    
+    bot.reply_to(message, f"Task started: {result['task_id']}")
+```
+
+---
+
+## Background Workers
+
+Run the scheduler in the background:
+
+```python
+from automation import start_scheduler
+
+# Start background scheduler
+scheduler = start_scheduler()
+
+# ... your main code ...
+
+# Stop when done
+scheduler.stop()
+```
+
+---
+
+## Next Steps
+
+- Add more tools (Stripe, blockchain, etc.)
+- Create visual workflow builder
+- Implement multi-agent coordination
+- Add federated learning capabilities

@@ -1,0 +1,276 @@
+---
+title: Digital Business Operator
+description: The autonomous AI executive concept
+---
+
+# Digital Business Operator
+
+The **Digital Business Operator** is the core concept behind BizNode - an AI agent that acts as an autonomous executive for your business.
+
+---
+
+## What is a Digital Business Operator?
+
+A Digital Business Operator (DBO) is not just a bot or automation script. It's an **intelligent agent** that:
+
+1. **Understands** - Uses LLM to comprehend business context
+2. **Decides** - Evaluates options based on risk levels
+3. **Acts** - Executes tasks autonomously within defined boundaries
+4. **Learns** - Builds knowledge from every interaction
+5. **Reports** - Keeps the owner informed of all actions
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    DIGITAL BUSINESS OPERATOR                     │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐      │
+│   │   PERCEIVE  │───▶│   DECIDE    │───▶│    ACT      │      │
+│   └─────────────┘    └─────────────┘    └─────────────┘      │
+│         │                                      │              │
+│         │           ┌─────────────┐            │              │
+│         └──────────▶│   LEARN     │◀───────────┘              │
+│                     └─────────────┘                            │
+│                           │                                    │
+│                     ┌─────────────┐                            │
+│                     │   REPORT    │                            │
+│                     └─────────────┘                            │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Identity Model
+
+### AI Agent Identity
+
+Every BizNode has a unique identity stored in SQLite:
+
+```python
+agent_identity = {
+    "agent_name": "TextileBiz AI",
+    "agent_email": "ai@textilenode.1bz",
+    "telegram_bot_token": "123456:ABC...",
+    "smtp_host": "smtp.gmail.com",
+    "smtp_user": "ai@textilenode.1bz",
+    "owner_telegram_id": "987654321",
+    "owner_email": "owner@textileco.com",
+    "autonomy_level": 2
+}
+```
+
+### Identity Attributes
+
+| Attribute | Description |
+|-----------|-------------|
+| `agent_name` | Human-readable name for the AI |
+| `agent_email` | AI's own email address for communications |
+| `telegram_bot_token` | Bot API token for public interactions |
+| `owner_telegram_id` | Owner's Telegram ID (supreme authority) |
+| `owner_email` | Owner's email for notifications |
+| `autonomy_level` | Operating autonomy level (1-3) |
+
+---
+
+## Risk Governance Model
+
+Every action the AI takes is evaluated for risk:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    RISK GOVERNANCE FLOW                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   ACTION PROPOSED                                               │
+│        │                                                        │
+│        ▼                                                        │
+│   ┌─────────────────┐                                           │
+│   │  ASSESS RISK    │ ◀── LLM evaluates action                  │
+│   └────────┬────────┘                                           │
+│            │                                                     │
+│     ┌──────┼──────┐                                             │
+│     ▼      ▼      ▼                                             │
+│   LOW   MEDIUM   HIGH                                           │
+│     │      │      │                                              │
+│     ▼      ▼      ▼                                             │
+│ ┌──────┐ ┌──────┐ ┌──────────┐                                 │
+│ │ AUTO │ │NOTIFY│ │  APPROVAL │                                 │
+│ │EXEC  │ │+EXEC │ │ REQUIRED  │                                 │
+│ └──────┘ └──────┘ └──────────┘                                 │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Risk Categories
+
+| Level | Actions | Example |
+|-------|---------|---------|
+| **LOW** | Auto-execute | Send brochure, share contact info |
+| **MEDIUM** | Execute + Notify | Draft negotiation, share data |
+| **HIGH** | Require Approval | Financial commitment, contracts |
+
+### Risk Examples by Category
+
+```
+LOW RISK (Auto-execute):
+├── Send product brochure
+├── Share contact information
+├── Send introductory email
+├── Schedule follow-up
+└── Add to newsletter
+
+MEDIUM RISK (Notify + Execute):
+├── Draft proposal
+├── Share pricing information
+├── Discuss partnership terms
+├── Provide customer lists
+└── Send contract template
+
+HIGH RISK (Require Approval):
+├── Accept payment
+├── Sign contract
+├── Commit to delivery
+├── Share sensitive data
+└── Make financial decisions
+```
+
+---
+
+## Owner Override System
+
+The owner is the **supreme authority**. At any time:
+
+1. **Override** - Reject any AI decision
+2. **Approve** - Pre-approve certain action types
+3. **Escalate** - AI can escalate to owner when uncertain
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    OWNER OVERRIDE SYSTEM                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────┐                                               │
+│  │    OWNER    │ ◀── Supreme Authority                         │
+│  │  (You!)     │                                               │
+│  └──────┬──────┘                                               │
+│         │                                                       │
+│    can override                                                 │
+│    any AI action                                               │
+│         │                                                       │
+│         ▼                                                       │
+│  ┌──────────────────────────────────────────┐                   │
+│  │           AI DECISION ENGINE              │                   │
+│  │                                          │                   │
+│  │  • Proposes actions                      │                   │
+│  │  • Assesses risk                         │                   │
+│  │  • Executes within limits                │                   │
+│  │  • Reports to owner                     │                   │
+│  └──────────────────────────────────────────┘                   │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Owner Commands
+
+| Command | Description |
+|---------|-------------|
+| `/approve [action_id]` | Approve a pending action |
+| `/reject [action_id]` | Reject a pending action |
+| `/autonomy [1-3]` | Set autonomy level |
+| `/block [action_type]` | Block specific action types |
+
+---
+
+## Levels of Autonomy
+
+### Level 1: Assistive
+
+The AI suggests actions but **always asks permission**.
+
+```
+AI: "A partner wants to collaborate. Should I send an intro email?"
+Owner: "Yes" → AI sends email
+Owner: "No" → AI doesn't act
+```
+
+**Best for:** Getting started, building trust
+
+---
+
+### Level 2: Semi-Autonomous
+
+Low-risk actions are **auto-executed** with notification. Medium-risk requires approval.
+
+```
+AI: [Auto-sends brochure to new contact]
+AI: [Notifies owner: "Sent brochure to X"]
+```
+
+**Best for:** Established workflows, efficiency
+
+---
+
+### Level 3: Fully Autonomous
+
+The AI acts independently, only escalating **high-risk** decisions.
+
+```
+AI: [Receives lead] → [Qualifies] → [Sends intro] → [Notifies owner]
+AI: [Receives contract request] → [Escalates to owner]
+```
+
+**Best for:** Trusted operations, advanced users
+
+---
+
+## Continuous Learning Loop
+
+The Digital Business Operator learns from every interaction:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    LEARNING LOOP                                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   ┌─────────┐                                                  │
+│   │ ACTION  │                                                  │
+│   │ TAKEN   │                                                  │
+│   └────┬────┘                                                  │
+│        │                                                        │
+│        ▼                                                        │
+│   ┌─────────┐     ┌─────────┐     ┌─────────┐                 │
+│   │RESULT   │────▶│ANALYZE  │────▶│UPDATE   │                 │
+│   │OBSERVED │     │PATTERN  │     │MEMORY   │                 │
+│   └─────────┘     └─────────┘     └─────────┘                 │
+│                                            │                    │
+│                                            ▼                    │
+│                                    ┌─────────────┐             │
+│                                    │  BETTER     │             │
+│                                    │  DECISIONS  │             │
+│                                    │  NEXT TIME  │             │
+│                                    └─────────────┘             │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Learning Types
+
+1. **Outcome Learning** - What worked/didn't work
+2. **Preference Learning** - Owner preferences
+3. **Context Learning** - Business domain knowledge
+4. **Relationship Learning** - Associate patterns
+
+---
+
+## Comparison: Traditional vs Digital Business Operator
+
+| Aspect | Traditional Assistant | Digital Business Operator |
+|--------|---------------------|--------------------------|
+| Availability | 9-5 (maybe) | 24/7 |
+| Speed | Human speed | Instant |
+| Memory | Limited | Unlimited |
+| Consistency | Variable | Consistent |
+| Scalability | Limited | Unlimited |
+| Cost | Salary + overhead | One-time + ops |
+| Learning | Slow | Continuous |

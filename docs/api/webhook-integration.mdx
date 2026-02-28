@@ -1,0 +1,90 @@
+---
+title: Webhook Integration
+description: Configure webhooks
+---
+
+# Webhook Integration
+
+Webhooks allow external systems to communicate with BizNode.
+
+---
+
+## Telegram Webhooks
+
+### Set Webhook
+
+```bash
+# Using Telegram API
+curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
+  -d "url=https://your-domain.com/webhook"
+```
+
+### Webhook Handler
+
+```python
+from telegram import Update
+from telegram.ext import Application, ContextTypes
+
+async def webhook(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = update.message.text
+    user_id = str(update.effective_user.id)
+    
+    # Process through BizNode
+    from agent.marketing_graph import run_marketing_graph
+    result = run_marketing_graph(message, user_id)
+    
+    await update.message.reply_text(result.get("message", ""))
+
+# Set webhook in app
+app = Application.builder().token(TOKEN).build()
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, webhook))
+app.run_webhook(
+    listen="0.0.0.0",
+    port=443,
+    url_path="webhook",
+    webhook_url="https://your-domain.com/webhook"
+)
+```
+
+---
+
+## Future Webhooks (Premium)
+
+### Stripe Webhooks
+
+```python
+# Future: Payment webhooks
+@app.route("/webhooks/stripe", methods=["POST"])
+def handle_stripe_webhook():
+    event = request.json
+    # Process payment events
+```
+
+### Blockchain Events
+
+```python
+# Future: Smart contract events
+@app.route("/webhooks/blockchain", methods=["POST"])
+def handle_blockchain_event():
+    event = request.json
+    # Process on-chain events
+```
+
+---
+
+## Security
+
+### Verify Webhooks
+
+```python
+import hmac
+import hashlib
+
+def verify_webhook(payload, signature, secret):
+    expected = hmac.new(
+        secret.encode(),
+        payload.encode(),
+        hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(expected, signature)
+```

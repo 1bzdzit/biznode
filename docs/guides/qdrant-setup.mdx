@@ -1,0 +1,57 @@
+---
+title: Qdrant Setup
+description: Configure vector database
+---
+
+# Qdrant Setup
+
+Qdrant provides semantic vector storage for BizNode.
+
+---
+
+## Docker Setup
+
+Qdrant runs in Docker:
+
+```yaml
+# docker-compose.yml
+qdrant:
+  image: qdrant/qdrant:latest
+  ports:
+    - "6333:6333"
+    - "6334:6334"
+  volumes:
+    - ./qdrant_storage:/qdrant/storage
+```
+
+---
+
+## Configuration
+
+```bash
+QDRANT_HOST=qdrant
+QDRANT_PORT=6333
+```
+
+---
+
+## Test Qdrant
+
+```bash
+# Check if running
+curl http://localhost:6333/collections
+```
+
+---
+
+## Persistent Storage
+
+Data is stored in `./qdrant_storage/`:
+
+```bash
+# Backup
+cp -r qdrant_storage backup_qdrant_$(date +%Y%m%d)/
+
+# Check size
+du -sh qdrant_storage/
+```

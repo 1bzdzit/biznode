@@ -1,0 +1,134 @@
+---
+title: Internal API
+description: Programmatic API reference
+---
+
+# Internal API
+
+BizNode provides Python functions for programmatic access.
+
+---
+
+## Registration
+
+### Register Business
+
+```python
+from memory.obsidian_layer import register_business_with_memory
+
+result = register_business_with_memory(
+    business_name="ABC Textiles",
+    owner_telegram_id="123456789",
+    owner_email="owner@abctextiles.com"
+)
+```
+
+### Register Associate
+
+```python
+from agent.network_graph import register_associate
+
+associate_id = register_associate(
+    network_id="1bz:associate:ABC123",
+    name="Partner Co",
+    telegram_id="123456789",
+    email="partner@example.com",
+    role="logistics"
+)
+```
+
+---
+
+## Memory
+
+### Write Memory
+
+```python
+from memory.obsidian_layer import AIObsidianLayer
+
+obsidian = AIObsidianLayer()
+result = obsidian.write_memory(
+    node_id="node_001",
+    title="Meeting Notes",
+    content="Discussed partnership with ABC Corp"
+)
+```
+
+### Query Memory
+
+```python
+from memory.obsidian_layer import query_business_memory
+
+result = query_business_memory("textile export strategies")
+print(result["response"])
+```
+
+---
+
+## Agents
+
+### Run Marketing Graph
+
+```python
+from agent.marketing_graph import run_marketing_graph
+
+result = run_marketing_graph(
+    raw_input="Hi, I'm interested in your services...",
+    user_id="123456789"
+)
+```
+
+### Run Decision Graph
+
+```python
+from agent.decision_graph import run_decision_graph
+
+result = run_decision_graph(
+    action_type="send_email",
+    data={"to": "partner@example.com"}
+)
+```
+
+---
+
+## Graphs
+
+### RAG Query
+
+```python
+from graphs.rag_query_graph import run_rag_query
+
+result = run_rag_query("Show marketing strategies")
+print(result["response"])
+```
+
+### Route Query
+
+```python
+from graphs.router_graph import route_query
+
+result = route_query(
+    query="I need help with pricing",
+    user_id="123456789"
+)
+```
+
+---
+
+## Database
+
+### Get All Leads
+
+```python
+from agent.marketing_graph import get_leads_by_status
+
+leads = get_leads_by_status("new")
+```
+
+### Get Associates
+
+```python
+from agent.network_graph import get_associates
+
+associates = get_associates(role="logistics")
+```

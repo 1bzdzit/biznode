@@ -1,0 +1,356 @@
+---
+title: AI Obsidian Memory
+description: The intelligent memory layer that makes BizNode different
+---
+
+# AI Obsidian Memory
+
+The **AI Obsidian Memory** is what makes BizNode different from simple RAG systems. It's an intelligent memory layer that:
+
+- Auto-summarizes content
+- Auto-embeds into vector space
+- Auto-links related concepts
+- Auto-tags business domains
+- Maintains a knowledge graph
+
+---
+
+## Traditional vs AI Obsidian
+
+| Traditional Obsidian | AI Obsidian Memory |
+|---------------------|-------------------|
+| Manual notes | Auto-generated summaries |
+| Manual links | Auto-discovered links |
+| Static graph | Dynamic knowledge graph |
+| Manual tagging | LLM-powered tagging |
+| Basic search | Semantic RAG |
+
+---
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    AI OBSIDIAN MEMORY LAYER                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   ┌──────────────────────────────────────────────────────────┐ │
+│   │                    INPUT                                   │ │
+│   │  • Business notes   • Lead info   • Interactions         │ │
+│   └─────────────────────────┬────────────────────────────────┘ │
+│                             │                                     │
+│                             ▼                                     │
+│   ┌──────────────────────────────────────────────────────────┐ │
+│   │              MEMORY WRITE PIPELINE                        │ │
+│   │                                                           │ │
+│   │  ┌────────────┐    ┌────────────┐    ┌────────────┐    │ │
+│   │  │  SUMMARIZE │───▶│   EMBED    │───▶│   STORE    │    │ │
+│   │  │   (LLM)    │    │ (Qdrant)   │    │  (SQLite)  │    │ │
+│   │  └────────────┘    └────────────┘    └────────────┘    │ │
+│   │         │                                                    │ │
+│   │         ▼                                                    │ │
+│   │  ┌────────────┐    ┌────────────┐                        │ │
+│   │  │    TAG     │───▶│   LINK     │                        │ │
+│   │  │   (LLM)    │    │ (Similarity)                       │ │
+│   │  └────────────┘    └────────────┘                        │ │
+│   └─────────────────────────┬────────────────────────────────┘ │
+│                             │                                     │
+│                             ▼                                     │
+│   ┌──────────────────────────────────────────────────────────┐ │
+│   │                    OUTPUT                                 │ │
+│   │  • Knowledge graph   • Backlinks   • RAG context       │ │
+│   └──────────────────────────────────────────────────────────┘ │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## The Two Databases
+
+### SQLite: Structured Data
+
+SQLite stores the **structured, queryable** data:
+
+```sql
+-- Notes table
+CREATE TABLE notes (
+    id INTEGER PRIMARY KEY,
+    node_id TEXT,
+    title TEXT,
+    content TEXT,
+    summary TEXT,
+    tags TEXT,
+    created_at DATETIME
+);
+
+-- Businesses table
+CREATE TABLE businesses (
+    id INTEGER PRIMARY KEY,
+    node_id TEXT UNIQUE,
+    business_name TEXT,
+    owner_telegram_id TEXT,
+    owner_email TEXT,
+    status TEXT
+);
+
+-- Leads table
+CREATE TABLE leads (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    business TEXT,
+    contact_info TEXT,
+    summary TEXT,
+    source TEXT
+);
+
+-- Associates table
+CREATE TABLE associates (
+    id INTEGER PRIMARY KEY,
+    network_id TEXT UNIQUE,
+    telegram_id TEXT,
+    email TEXT,
+    role TEXT
+);
+```
+
+### Qdrant: Semantic Memory
+
+Qdrant stores **vector embeddings** for similarity search:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      QDRANT VECTOR STORE                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Note ID    │  Embedding Vector  │  Payload                    │
+│ ────────────┼────────────────────┼─────────────────────────     │
+│  abc123     │  [0.1, -0.3, ...]  │  {title: "Textile Co",      │
+│             │                    │   tags: "manufacturing,      │
+│             │                    │    export",                  │
+│             │                    │   summary: "..."}            │
+│                                                                  │
+│  def456     │  [0.2, -0.1, ...]  │  {title: "Export Partners", │
+│             │                    │   tags: "business,          │
+│             │                    │    network"}                │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Embeddings
+
+### What are Embeddings?
+
+Embeddings are **numerical representations** of text that capture semantic meaning:
+
+```
+Text: "Textile export business in Mumbai"
+       │
+       │ Embedding Model
+       ▼
+Vector: [0.12, -0.34, 0.56, 0.78, -0.23, ...]
+```
+
+### Embedding Model
+
+BizNode uses `nomic-embed-text`:
+
+| Model | Size | Dimensions | Use Case |
+|-------|------|------------|----------|
+| `nomic-embed-text` | ~500MB | 768 | General purpose |
+
+---
+
+## Auto-Link Engine
+
+### How Auto-Linking Works
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    AUTO-LINK ENGINE                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  New Note: "ABC Textiles - Export Business"                     │
+│                             │                                    │
+│                             ▼                                    │
+│  1. Generate embedding for new note                             │
+│                             │                                    │
+│                             ▼                                    │
+│  2. Search for similar notes (score > 0.80)                    │
+│     ┌─────────────────────────────────────────┐               │
+│     │ Similar Note 1: "Textile Manufacturing"  │ score: 0.92 │
+│     │ Similar Note 2: "Export Partners"        │ score: 0.87 │
+│     │ Similar Note 3: "Mumbai Suppliers"       │ score: 0.84 │
+│     └─────────────────────────────────────────┘               │
+│                             │                                    │
+│                             ▼                                    │
+│  3. Create backlinks in SQLite                                │
+│     ┌─────────────────────────────────────────┐               │
+│     │ note_links:                              │               │
+│     │ source_id: new_note                      │               │
+│     │ target_id: similar_note_1, similar_2     │               │
+│     │ similarity: 0.92, 0.87                   │               │
+│     └─────────────────────────────────────────┘               │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Link Threshold
+
+| Score | Action |
+|-------|--------|
+| > 0.90 | Strong link - auto-link |
+| 0.80-0.90 | Link - suggest link |
+| 0.70-0.80 | Weak link - mention only |
+| < 0.70 | No link |
+
+---
+
+## RAG Pipeline
+
+### Retrieval-Augmented Generation
+
+RAG combines the best of both databases:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    RAG PIPELINE                                  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  USER QUERY                                                     │
+│  "Show me textile export strategies"                            │
+│        │                                                        │
+│        ▼                                                        │
+│  ┌─────────────────┐                                            │
+│  │ 1. EMBED QUERY │                                            │
+│  │ Convert to vector│                                           │
+│  └────────┬────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌─────────────────┐                                            │
+│  │2. SEARCH QDRANT │ ◀── Semantic search                       │
+│  │   Find similar  │                                            │
+│  └────────┬────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌─────────────────┐                                            │
+│  │3. FETCH SQLite │ ◀── Get structured data                   │
+│  │   Get business  │                                            │
+│  └────────┬────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌─────────────────┐                                            │
+│  │4. BUILD CONTEXT│                                            │
+│  │ Combine results │                                            │
+│  └────────┬────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌─────────────────┐                                            │
+│  │5. ASK LLM       │ ◀── Generate response                     │
+│  │   With context  │                                            │
+│  └────────┬────────┘                                            │
+│           │                                                      │
+│           ▼                                                      │
+│        RESPONSE                                                  │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Memory Write Flow
+
+### Step-by-Step
+
+```python
+def write_memory(node_id, title, content):
+    # 1. Summarize using LLM
+    summary = summarize_note(content)
+    
+    # 2. Generate tags using LLM
+    tags = generate_tags(content)
+    
+    # 3. Generate embedding
+    embedding = generate_embedding(summary)
+    
+    # 4. Store in Qdrant
+    vector_id = qdrant.store(embedding, payload)
+    
+    # 5. Find similar notes
+    similar = qdrant.search(embedding, threshold=0.80)
+    
+    # 6. Create links
+    for s in similar:
+        create_link(source=note_id, target=s.id, similarity=s.score)
+    
+    # 7. Store metadata in SQLite
+    note_id = create_note(node_id, title, content, summary, tags)
+    
+    return note_id
+```
+
+---
+
+## Memory Retrieval Flow
+
+### Step-by-Step
+
+```python
+def read_memory(query):
+    # 1. Embed query
+    embedding = generate_embedding(query)
+    
+    # 2. Search Qdrant
+    results = qdrant.search(embedding, limit=5)
+    
+    # 3. Fetch structured data
+    structured = get_businesses([r.node_id for r in results])
+    
+    # 4. Build context
+    context = build_context(results, structured)
+    
+    # 5. Generate response
+    response = ask_llm(context, query)
+    
+    return {"results": results, "response": response}
+```
+
+---
+
+## Knowledge Graph
+
+### What Gets Stored
+
+```json
+{
+  "nodes": [
+    {"id": "1", "title": "ABC Textiles", "tags": "manufacturing,export"},
+    {"id": "2", "title": "XYZ Logistics", "tags": "shipping,logistics"}
+  ],
+  "links": [
+    {"source": "1", "target": "2", "similarity": 0.85}
+  ]
+}
+```
+
+### Graph Visualization
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    KNOWLEDGE GRAPH                               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│    [Textile Co.]──────────[Export Partners]                      │
+│         │                        │                              │
+│         │ 0.92                  │ 0.87                        │
+│         │                        │                              │
+│         └────────┬───────────────┘                              │
+│                  │                                               │
+│                  │ 0.84                                          │
+│                  │                                               │
+│           [Mumbai Suppliers]                                     │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```

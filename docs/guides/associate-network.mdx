@@ -1,0 +1,94 @@
+---
+title: Associate Network
+description: Managing business partners
+---
+
+# Associate Network
+
+The associate network allows BizNode to connect leads with relevant business partners.
+
+---
+
+## What are Associates?
+
+Associates are pre-registered business partners who can be introduced to leads.
+
+### Roles
+
+| Role | Description |
+|------|-------------|
+| `logistics` | Shipping & logistics |
+| `marketing` | Marketing services |
+| `legal` | Legal services |
+| `finance` | Financial services |
+| `supplier` | Product suppliers |
+| `distributor` | Distribution partners |
+| `retail` | Retail partners |
+
+---
+
+## Register an Associate
+
+```python
+from agent.network_graph import register_associate
+
+associate_id = register_associate(
+    network_id="1bz:associate:ABC123",
+    name="Fast Shipping Co",
+    telegram_id="123456789",
+    email="partners@fastshipping.com",
+    role="logistics",
+    business_type="shipping"
+)
+```
+
+---
+
+## Find Partners for a Lead
+
+```python
+from agent.network_graph import find_partners_for_lead
+
+partners = find_partners_for_lead({
+    "name": "New Lead",
+    "business": "Export Business"
+})
+```
+
+---
+
+## Network Flow
+
+```
+Lead comes in
+     │
+     ▼
+AI identifies opportunity
+     │
+     ▼
+Search associates by role
+     │
+     ▼
+Select best match
+     │
+     ▼
+Draft intro message
+     │
+     ▼
+Send TG + Email
+     │
+     ▼
+Log interaction
+```
+
+---
+
+## Associate Table
+
+```sql
+SELECT * FROM associates;
+```
+
+| id | network_id | name | telegram_id | email | role |
+|----|-----------|------|-------------|-------|------|
+| 1 | 1bz:... | Fast Shipping | 123... | a@b.com | logistics |

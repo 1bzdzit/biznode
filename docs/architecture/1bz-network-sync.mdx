@@ -1,0 +1,227 @@
+---
+title: 1bz Network Sync
+description: Associate registry and network synchronization
+---
+
+# 1bz Network Sync
+
+The **1bz Network** is BizNode's decentralized associate network for business referrals and partnerships.
+
+---
+
+## Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    1BZ NETWORK ARCHITECTURE                      │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   ┌─────────────────────────────────────────────────────────┐ │
+│   │                   YOUR BIZNODE                            │ │
+│   │   ┌───────────┐    ┌───────────┐    ┌───────────┐      │ │
+│   │   │ Associate │    │  Network  │    │   Sync    │      │ │
+│   │   │  Registry │    │   Graph   │    │   Graph   │      │ │
+│   │   └───────────┘    └───────────┘    └───────────┘      │ │
+│   └─────────────────────────────────────────────────────────┘ │
+│                              │                                   │
+│                              ▼                                   │
+│                    ┌─────────────────┐                         │
+│                    │   1BZ NETWORK   │                         │
+│                    │   (Decentralized)                        │
+│                    └─────────────────┘                         │
+│                              │                                   │
+│          ┌───────────────────┼───────────────────┐               │
+│          ▼                   ▼                   ▼               │
+│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
+│   │  Associate  │    │  Associate  │    │  Associate  │     │
+│   │     A       │    │     B      │    │     C      │     │
+│   └─────────────┘    └─────────────┘    └─────────────┘     │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Associate Registry
+
+### SQLite Table
+
+```sql
+CREATE TABLE associates (
+    id INTEGER PRIMARY KEY,
+    network_id TEXT UNIQUE,
+    name TEXT,
+    telegram_id TEXT,
+    email TEXT,
+    role TEXT,
+    business_type TEXT,
+    status TEXT DEFAULT 'active'
+);
+```
+
+### Associate Attributes
+
+| Field | Description |
+|-------|-------------|
+| `network_id` | Unique 1bz network identifier |
+| `name` | Associate's business name |
+| `telegram_id` | Telegram contact |
+| `email` | Email address |
+| `role` | Role (logistics, marketing, legal, etc.) |
+| `business_type` | Industry category |
+| `status` | active/inactive |
+
+---
+
+## Network ID Model
+
+### ID Format
+
+```
+1bz:associate:ABC123XYZ
+```
+
+Components:
+- `1bz` - Network prefix
+- `associate` - Type
+- `ABC123XYZ` - Unique hash
+
+---
+
+## Email + Telegram Coordination
+
+### Communication Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│               COMMUNICATION FLOW                                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   AI IDENTIFIES OPPORTUNITY                                      │
+│         │                                                        │
+│         ▼                                                        │
+│   ┌─────────────┐                                               │
+│   │   SEARCH    │ ◀── Find matching associates                 │
+│   │  ASSOCIATES │    by role/business type                      │
+│   └──────┬──────┘                                               │
+│          │                                                       │
+│          ▼                                                       │
+│   ┌─────────────┐                                               │
+│   │   DRAFT     │ ◀── LLM generates intro message              │
+│   │   MESSAGE   │                                              │
+│   └──────┬──────┘                                               │
+│          │                                                       │
+│     ┌───┴───┐                                                   │
+│     ▼       ▼                                                   │
+│ ┌──────┐ ┌──────┐                                               │
+│ │  TG  │ │Email │                                               │
+│ └──────┘ └──────┘                                               │
+│     │       │                                                   │
+│     └───────┼───────┐                                           │
+│             │       │                                           │
+│             ▼       ▼                                           │
+│      ┌──────────┐ ┌──────────┐                                  │
+│      │ Associate │ │ Associate │                                  │
+│      │ receives │ │ receives │                                  │
+│      │   TG     │ │  email   │                                  │
+│      └──────────┘ └──────────┘                                  │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Metadata Hashing
+
+### Hash Generation
+
+```python
+import hashlib
+import json
+
+def hash_metadata(metadata):
+    metadata_str = json.dumps(metadata, sort_keys=True)
+    return hashlib.sha256(metadata_str.encode()).hexdigest()
+```
+
+### Sync Record
+
+```sql
+CREATE TABLE sync_registry (
+    id INTEGER PRIMARY KEY,
+    node_id TEXT,
+    hash_data TEXT,
+    signature TEXT,
+    sync_status TEXT,
+    created_at DATETIME,
+    synced_at DATETIME
+);
+```
+
+---
+
+## Future Blockchain Integration
+
+### Premium Features (Future)
+
+| Feature | Description |
+|---------|-------------|
+| Wallet Signing | Sign network actions with wallet |
+| Smart Contracts | Automate partner agreements |
+| On-chain Proof | Verify associate credentials |
+| Token Rewards | Incentivize referrals |
+
+---
+
+## Current Implementation
+
+### Associate Search
+
+```python
+from memory.database import get_associates_by_role
+
+# Find logistics partners
+associates = get_associates_by_role("logistics")
+```
+
+### Network Graph
+
+```python
+from agent.network_graph import run_network_graph
+
+result = run_network_graph(lead_data={
+    "name": "John",
+    "business": "ABC Corp",
+    "contact_info": "john@abc.com"
+})
+```
+
+---
+
+## Usage
+
+### Register an Associate
+
+```python
+from agent.network_graph import register_associate
+
+associate_id = register_associate(
+    network_id="1bz:associate:ABC123",
+    name="Logistics Partner Co",
+    telegram_id="123456789",
+    email="partner@logistics.com",
+    role="logistics",
+    business_type="shipping"
+)
+```
+
+### Find Partners
+
+```python
+from agent.network_graph import find_partners_for_lead
+
+partners = find_partners_for_lead({
+    "name": "New Lead",
+    "business": "Export Business"
+})
+```

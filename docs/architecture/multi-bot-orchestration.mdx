@@ -1,0 +1,242 @@
+---
+title: Multi-Bot Orchestration
+description: Managing multiple domain-specific bots
+---
+
+# Multi-Bot Orchestration
+
+BizNode supports **multi-bot orchestration** - the ability to run multiple specialized bots from a single Telegram interface.
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│               MULTI-BOT ORCHESTRATION                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│              TELEGRAM CHANNEL                                    │
+│                    │                                            │
+│                    ▼                                            │
+│         ┌─────────────────┐                                     │
+│         │   MASTER BOT    │                                     │
+│         │   (Router)      │                                     │
+│         └────────┬────────┘                                     │
+│                  │                                               │
+│                  ▼                                               │
+│         ┌─────────────────┐                                     │
+│         │  INTENT ROUTER  │ ◀── LLM classifies intent          │
+│         │   (LangGraph)   │                                     │
+│         └────────┬────────┘                                     │
+│                  │                                               │
+│     ┌───────────┼───────────┐                                   │
+│     ▼           ▼           ▼                                   │
+│ ┌────────┐ ┌────────┐ ┌────────┐                               │
+│ │Finance  │ │Marketing│ │ Legal  │                               │
+│ │  Bot    │ │   Bot   │ │  Bot   │                               │
+│ └────────┘ └────────┘ └────────┘                               │
+│     │           │           │                                   │
+│     └───────────┴───────────┘                                   │
+│                 │                                               │
+│                 ▼                                               │
+│         ┌─────────────────┐                                     │
+│         │  SHARED MEMORY │                                     │
+│         │ (SQLite+Qdrant)│                                     │
+│         └─────────────────┘                                     │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Bot Types
+
+### 1. Master Bot
+
+Routes all incoming messages to the appropriate specialized bot.
+
+### 2. Finance Bot
+
+Handles:
+- Pricing queries
+- Invoice discussions
+- Payment terms
+- Financial reports
+
+### 3. Marketing Bot
+
+Handles:
+- Lead collection
+- Campaign inquiries
+- Marketing strategy
+- Partnership opportunities
+
+### 4. Legal Bot
+
+Handles:
+- Contract questions
+- Compliance inquiries
+- Legal documentation
+
+### 5. Core Bot
+
+Handles:
+- Business registration
+- General queries
+- System commands
+
+---
+
+## Intent Router
+
+### How Routing Works
+
+```python
+from services.llm_service import classify_intent
+
+def classify_intent_llm(state):
+    prompt = f"""
+    Classify this request:
+    {state['query']}
+    
+    Categories: finance, marketing, legal, core
+    """
+    intent = ask_llm(prompt).strip().lower()
+    state["intent"] = intent
+    return state
+```
+
+### Router Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    ROUTER FLOW                                    │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   USER MESSAGE                                                  │
+│   "What's our pricing for bulk orders?"                         │
+│         │                                                        │
+│         ▼                                                        │
+│   ┌─────────────┐                                               │
+│   │ CLASSIFY    │ ◀── LLM analyzes                              │
+│   │   INTENT    │                                              │
+│   └──────┬──────┘                                               │
+│          │                                                       │
+│          ▼                                                       │
+│   ┌─────────────┐                                               │
+│   │   ROUTE     │───▶ finance_graph                             │
+│   │             │                                               │
+│   └─────────────┘                                               │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Memory Models
+
+### Shared Memory
+
+All bots share the same memory layer:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    SHARED MEMORY                                  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │                      SQLITE                                 │ │
+│  │  • Businesses  • Leads  • Associates  • Actions           │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                              │                                   │
+│                              ▼                                   │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │                      QDRANT                                 │ │
+│  │  • All embeddings accessible to all bots                  │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Isolated Memory (Future)
+
+Premium feature - each bot can have private memory.
+
+---
+
+## Implementation
+
+### Router Graph
+
+```python
+from langgraph.graph import StateGraph
+
+def create_router_graph():
+    graph = StateGraph(RouterState)
+    
+    graph.add_node("classify_intent", classify_intent_llm)
+    graph.add_node("determine_route", determine_route)
+    graph.add_node("execute_graph", execute_target_graph)
+    
+    graph.set_entry_point("classify_intent")
+    graph.add_edge("classify_intent", "determine_route")
+    graph.add_edge("determine_route", "execute_graph")
+    graph.add_edge("execute_graph", END)
+    
+    return graph.compile()
+```
+
+### Route Mapping
+
+```python
+ROUTE_MAP = {
+    "finance": "run_finance_graph",
+    "marketing": "run_marketing_graph",
+    "legal": "run_legal_graph",
+    "core": "run_core_graph"
+}
+
+def execute_target_graph(state):
+    target = state["target_graph"]
+    
+    if target == "finance":
+        from agent.finance_graph import run_finance_graph
+        return run_finance_graph(state["query"])
+    
+    # ... other bots
+```
+
+---
+
+## Usage Example
+
+```
+User: "I need help with contract terms"
+
+Router:
+├── Classifies as "legal"
+└── Routes to Legal Bot
+
+Legal Bot:
+├── Searches memory for contracts
+├── Finds relevant templates
+└── Generates response
+
+Response:
+  "Based on your contracts, our standard terms include...
+```
+
+---
+
+## Bot Commands
+
+Each bot can have specific commands:
+
+| Bot | Command | Description |
+|-----|---------|-------------|
+| Core | `/register` | Register business |
+| Core | `/status` | Check status |
+| Finance | `/price` | Get pricing |
+| Marketing | `/leads` | View leads |
+| Legal | `/contracts` | List contracts |

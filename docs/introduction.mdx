@@ -1,0 +1,167 @@
+---
+title: Introduction
+description: Welcome to BizNode - Autonomous AI Business Agent
+---
+
+# Introduction to BizNode
+
+## What is BizNode?
+
+BizNode is a **fully autonomous AI business agent** that runs entirely from a portable USB device. It's not just a bot or a simple RAG system—it's a digital business executive that can:
+
+- 🧠 **Think** using local LLMs (Ollama with Qwen2.5)
+- 📚 **Remember** using AI-powered semantic memory
+- 🤝 **Network** with business associates automatically
+- 📧 **Communicate** via Telegram and Email
+- 🔐 **Operate** with owner oversight but autonomous execution
+
+## What is a Digital Business Operator?
+
+A **Digital Business Operator** is an AI agent that acts as an autonomous executive for your business. Unlike traditional automation tools that follow rigid rules, a Digital Business Operator:
+
+1. **Understands Context** - Uses LLM to comprehend business situations
+2. **Makes Decisions** - Evaluates options and takes appropriate actions
+3. **Learns Continuously** - Builds knowledge from every interaction
+4. **Networks Proactively** - Connects with partners without manual intervention
+5. **Reports Transparently** - Keeps owners informed of all actions
+
+### The Autonomous AI Concept
+
+BizNode operates on a philosophy of **intelligent autonomy**:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    OWNER (Supreme Authority)                  │
+│                 Can override any AI decision                 │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│              AUTONOMY LEVEL SYSTEM                          │
+│  Level 1: AI suggests → Owner approves                       │
+│  Level 2: Low-risk AI executes → Owner notified              │
+│  Level 3: AI acts fully autonomously                         │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│              RISK GOVERNANCE                                │
+│  🟢 Low Risk: Auto-execute (brochure, contact share)       │
+│  🟡 Medium Risk: Execute + notify owner                    │
+│  🔴 High Risk: Requires owner approval                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## USB Portable Architecture
+
+One of BizNode's key innovations is its **USB-portable architecture**:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     64GB USB DRIVE                          │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │                   BIZNODE CORE                        │  │
+│  │  ┌─────────┐  ┌─────────┐  ┌─────────────────────┐ │  │
+│  │  │ Ollama  │  │ Qdrant  │  │   SQLite Database   │ │  │
+│  │  │ (LLM)   │  │ (Vector)│  │   (Structured)     │ │  │
+│  │  └─────────┘  └─────────┘  └─────────────────────┘ │  │
+│  │                                                       │  │
+│  │  ┌───────────────────────────────────────────────┐   │  │
+│  │  │         LangGraph Workflow Engine            │   │  │
+│  │  └───────────────────────────────────────────────┘   │  │
+│  │                                                       │  │
+│  │  ┌───────────────────────────────────────────────┐   │  │
+│  │  │         Telegram Bot + Email Service          │   │  │
+│  │  └───────────────────────────────────────────────┘   │  │
+│  └──────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Benefits of USB Architecture
+
+| Feature | Benefit |
+|---------|---------|
+| **Portable** | Move your AI executive anywhere |
+| **Offline Capable** | Works without internet (except Telegram/Email) |
+| **Data Sovereignty** | All data stays on your device |
+| **No Cloud Fees** | Run without cloud dependencies |
+| **Easy Backup** | Simply copy the USB |
+
+## Who is BizNode For?
+
+### 🎯 Primary Audiences
+
+1. **Small Business Owners**
+   - Need automated lead handling
+   - Want professional networking
+   - Limited IT resources
+
+2. **Entrepreneurs**
+   - Building personal brand
+   - Need 24/7 business presence
+   - Want AI-powered operations
+
+3. **Sales Professionals**
+   - Automate follow-ups
+   - Network intelligently
+   - Track opportunities
+
+4. **Consultants**
+   - Manage multiple clients
+   - Knowledge management
+   - Automated reporting
+
+### 🆚 Elementary vs Premium
+
+| Feature | Elementary (Free) | Premium |
+|---------|-------------------|---------|
+| **Storage** | USB (SQLite + Qdrant) | Extended |
+| **Network** | Off-chain only | Blockchain registry |
+| **Wallet** | - | Smart contract signing |
+| **Memory** | Local | Federated |
+| **Updates** | Manual | Auto-sync |
+
+## Roadmap
+
+### Phase 1: Foundation ✅
+- Core identity system
+- Docker stack
+- Basic Telegram bot
+
+### Phase 2: Intelligence ✅
+- Qdrant RAG integration
+- Config management
+- Wallet generation
+- Unit tests
+
+### Phase 3: Network ✅
+- Smart contracts
+- FastAPI registry
+- DNS resolution
+- Event listeners
+
+### Phase 4: Autonomy (Current) ✅
+- AI Obsidian Memory Engine
+- LangGraph orchestration
+- Autonomous agents
+- Owner authority system
+
+### Phase 5: Premium (Future)
+- Wallet signing
+- Blockchain registry
+- Federated memory
+- SaaS sync
+
+---
+
+## Getting Started
+
+Ready to bring your AI business executive to life? Head to the [Quick Start Guide](/docs/quickstart) to get up and running in minutes.
+
+```bash
+# Clone and go
+git clone https://github.com/your-repo/biznode.git
+cd biznode
+cp .env.example .env
+docker compose up -d
+```

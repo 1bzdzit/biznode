@@ -1,0 +1,74 @@
+---
+title: Ollama Setup
+description: Configure local LLM
+---
+
+# Ollama Setup
+
+Ollama provides the local LLM capability for BizNode.
+
+---
+
+## Docker Setup
+
+Ollama runs in Docker via docker-compose:
+
+```yaml
+# docker-compose.yml
+ollama:
+  image: ollama/ollama:latest
+  ports:
+    - "11434:11434"
+  volumes:
+    - ollama-data:/root/.ollama
+```
+
+---
+
+## Pull Models
+
+```bash
+# Main reasoning model
+docker compose exec ollama ollama pull qwen2.5
+
+# Embedding model
+docker compose exec ollama ollama pull nomic-embed-text
+```
+
+---
+
+## Test Ollama
+
+```bash
+docker compose exec ollama ollama list
+# Output:
+# NAME                ID          SIZE      MODIFIED
+# qwen2.5:latest      abc123...   4.5GB     ...
+# nomic-embed-text     def456...   500MB     ...
+```
+
+---
+
+## Environment Variables
+
+```bash
+LLM_MODEL=qwen2.5
+EMBEDDING_MODEL=nomic-embed-text
+OLLAMA_URL=http://ollama:11434/api/generate
+```
+
+---
+
+## Memory Optimization
+
+For limited RAM, use smaller models:
+
+```bash
+# Smaller model
+docker compose exec ollama ollama pull llama3:8b
+```
+
+```bash
+# Update .env
+LLM_MODEL=llama3:8b
+```

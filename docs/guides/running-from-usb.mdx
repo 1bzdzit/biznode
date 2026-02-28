@@ -1,0 +1,87 @@
+---
+title: Running from USB
+description: Portable BizNode deployment
+---
+
+# Running from USB
+
+One of BizNode's key features is the ability to run entirely from a USB drive.
+
+---
+
+## Why USB?
+
+| Feature | Benefit |
+|---------|---------|
+| **Portable** | Move your AI executive anywhere |
+| **Offline Capable** | Works without cloud |
+| **Data Sovereignty** | All data stays on device |
+| **No Monthly Fees** | No cloud hosting costs |
+| **Easy Backup** | Copy USB to backup |
+
+---
+
+## Requirements
+
+- 64GB USB 3.0+ drive
+- Host computer with Docker Desktop
+- Internet for Telegram/Email
+
+---
+
+## Setup
+
+### 1. Prepare USB
+
+Format as NTFS (Windows) or ext4 (Linux).
+
+### 2. Copy BizNode
+
+```bash
+# Clone or copy BizNode to USB
+cp -r biznode /media/your-usb/
+```
+
+### 3. Configure
+
+Edit `.env` on the USB.
+
+### 4. Run
+
+```bash
+cd /media/your-usb/biznode
+docker compose up -d
+```
+
+---
+
+## Data Locations
+
+```
+USB Drive/
+└── biznode/
+    ├── memory/           # SQLite database
+    ├── qdrant_storage/  # Vector database
+    └── .env             # Configuration
+```
+
+---
+
+## Backup Strategy
+
+```bash
+# Backup USB contents
+cp -r /media/your-usb backup_$(date +%Y%m%d)/
+```
+
+---
+
+## Offline Mode
+
+When offline:
+- ✅ LLM reasoning works (local Ollama)
+- ✅ Vector search works (local Qdrant)
+- ✅ Database queries work (local SQLite)
+- ❌ Telegram messages won't send
+- ❌ Emails won't send
+- ❌ Model updates unavailable
