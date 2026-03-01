@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BizNode Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: { colors: { surface: '#0f1117', panel: '#1a1d27', border: '#2a2d3a' } } }
+    }
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <style>
+    body { background: #0f1117; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #1a1d27; }
+    ::-webkit-scrollbar-thumb { background: #3a3d4a; border-radius: 3px; }
+    .nav-item { transition: background 0.15s, color 0.15s; }
+    .nav-item.active { background: #6366f1; color: white; }
+    .nav-item:not(.active):hover { background: #2a2d3a; }
+    .skeleton { animation: pulse 1.5s ease-in-out infinite; background: #2a2d3a; border-radius: 4px; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .msg-agent { background: #1e2030; border-left: 3px solid #6366f1; }
+    .msg-owner { background: #1a2a1a; border-left: 3px solid #22c55e; }
+    .badge { display:inline-flex;align-items:center;padding:2px 8px;border-radius:9999px;font-size:.7rem;font-weight:600;letter-spacing:.05em; }
+    .field-input { background:#0f1117;border:1px solid #2a2d3a;border-radius:8px;color:#e5e7eb;width:100%;padding:8px 12px;font-size:.875rem;outline:none;transition:border-color .15s; }
+    .field-input:focus { border-color:#6366f1; }
+    .field-input::placeholder { color:#4b5563; }
+    .help-h2 { font-size:1rem;font-weight:700;color:#c7d2fe;margin-top:1.5rem;margin-bottom:.5rem;padding-bottom:.25rem;border-bottom:1px solid #2a2d3a; }
+    .help-h3 { font-size:.875rem;font-weight:600;color:#a5b4fc;margin-top:1rem;margin-bottom:.25rem; }
+    .help-p  { font-size:.8rem;color:#9ca3af;line-height:1.6;margin-bottom:.5rem; }
+    .help-code { background:#0f1117;border:1px solid #2a2d3a;border-radius:4px;padding:2px 6px;font-family:monospace;font-size:.75rem;color:#6ee7b7; }
+    .help-table { width:100%;font-size:.75rem;border-collapse:collapse;margin-bottom:1rem; }
+    .help-table th { text-align:left;padding:6px 10px;background:#1a1d27;color:#6366f1;border-bottom:1px solid #2a2d3a; }
+    .help-table td { padding:6px 10px;border-bottom:1px solid #1e2230;color:#d1d5db;vertical-align:top; }
+    .help-table tr:hover td { background:#1e2030; }
+  </style>
+</head>
+
+<body class="text-gray-100 font-sans antialiased" x-data="biznode()" x-init="init()">
+
+<!-- ═══ SETUP REQUIRED BANNER ═══ -->
+<div x-show="!configured && section !== 'setup'"
+     x-transition
+     class="fixed top-0 left-0 right-0 z-50 bg-amber-600 text-white text-sm flex items-center justify-between px-4 py-2">
+  <span>⚠️ BizNode is not configured yet. Please complete the setup to start working.</span>
+  <button @click="section='setup'" class="underline font-semibold hover:text-amber-100">Open Setup →</button>
+</div>
+
+<!-- ═══ LAYOUT ═══ -->
+<div class="flex h-screen overflow-hidden" :class="!configured && section !== 'setup' ? 'pt-9' : ''">
+
+  <!-- ═══ SIDEBAR ═══ -->
+  <aside class="flex flex-col bg-panel border-r border-border transition-all duration-200 z-30"
+         :class="sidebarOpen ? 'w-52' : 'w-16'">
+
+    <!-- Logo / toggle -->
+    <div class="flex items-center gap-2 px-3 py-4 border-b border-border">
+      <button @click="sidebarOpen = !sidebarOpen"
+              class="text-indigo-400 hover:text-indigo-300 text-xl w-10 h-10 flex items-center justify-center rounded-lg hover:bg-border transition-colors">☰</button>
+      <span x-show="sidebarOpen" class="text-sm font-bold text-indigo-400 tracking-wide whitespace-nowrap">BizNode</span>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex-1 py-3 space-y-1 px-2">
+      <template x-for="item in navItems" :key="item.id">
+        <button @click="switchSection(item.id)"
+                class="nav-item w-full flex items-center gap-3 px-2 py-2.5 rounded-lg text-sm"
+                :class="section === item.id ? 'active' : 'text-gray-400'">
+          <span class="text-lg w-6 text-center relative">
+            <span x-text="item.icon"></span>
+            <!-- dot badge for pending approvals on Leads nav -->
+            <span x-show="item.id==='leads' && metrics.pending_approvals > 0"
+                  class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-400"></span>
+            <!-- dot badge for unconfigured -->
+            <span x-show="item.id==='setup' && !configured"
+                  class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500"></span>
+          </span>
+          <span x-show="sidebarOpen" class="whitespace-nowrap" x-text="item.label"></span>
+        </button>
+      </template>
+    </nav>
+
+    <!-- Agent status -->
+    <div class="px-3 py-4 border-t border-border">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full"
+              :class="health.components?.database?.startsWith('healthy') ? 'bg-green-400 animate-pulse' : 'bg-red-500'"></span>
+        <span x-show="sidebarOpen" class="text-xs text-gray-400">Agent</span>
+        <span x-show="sidebarOpen" class="text-xs font-semibold"
+              :class="health.components?.database?.startsWith('healthy') ? 'text-green-400' : 'text-red-400'"
+              x-text="health.components?.database?.startsWith('healthy') ? 'Online' : 'Offline'"></span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══ MAIN ═══ -->
+  <main class="flex-1 overflow-y-auto">
+
+    <!-- Top bar -->
+    <header class="sticky top-0 z-20 bg-surface border-b border-border px-6 py-3 flex items-center justify-between">
+      <h1 class="text-base font-semibold text-gray-100"
+          x-text="navItems.find(n=>n.id===section)?.label || 'Dashboard'"></h1>
+      <div class="flex items-center gap-3 text-xs text-gray-400">
+        <span x-text="'Updated: ' + lastUpdated"></span>
+        <button @click="refreshAll()"
+                class="text-indigo-400 hover:text-indigo-300 border border-border rounded px-2 py-1 hover:bg-border transition-colors">
+          ↺ Refresh
+        </button>
+      </div>
+    </header>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- DASHBOARD                                              -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <section x-show="section === 'dashboard'" class="p-6 space-y-6">
+
+      <!-- Status pills -->
+      <div class="flex flex-wrap gap-3">
+        <template x-for="[name, val] in Object.entries(health.components || {})" :key="name">
+          <div class="flex items-center gap-2 bg-panel border border-border rounded-full px-4 py-1.5 text-xs">
+            <span class="w-2 h-2 rounded-full"
+                  :class="val.startsWith('healthy') ? 'bg-green-400' : 'bg-amber-400'"></span>
+            <span class="capitalize text-gray-300" x-text="name"></span>
+            <span class="font-semibold"
+                  :class="val.startsWith('healthy') ? 'text-green-400' : 'text-amber-400'"
+                  x-text="val.startsWith('healthy') ? '✓ OK' : '⚠ ' + val.split(':')[0]"></span>
+          </div>
+        </template>
+      </div>
+
+      <!-- Metric cards -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-panel border border-border rounded-xl p-4">
+          <p class="text-xs text-gray-400 uppercase tracking-wide">Total Leads</p>
+          <p class="text-3xl font-bold text-indigo-400 mt-1" x-text="metrics.total_leads ?? '—'"></p>
+        </div>
+        <div class="bg-panel border border-border rounded-xl p-4">
+          <p class="text-xs text-gray-400 uppercase tracking-wide">Businesses</p>
+          <p class="text-3xl font-bold text-cyan-400 mt-1" x-text="metrics.total_businesses ?? '—'"></p>
+        </div>
+        <div class="bg-panel border border-border rounded-xl p-4">
+          <p class="text-xs text-gray-400 uppercase tracking-wide">Pending Approvals</p>
+          <p class="text-3xl font-bold text-amber-400 mt-1" x-text="metrics.pending_approvals ?? '—'"></p>
+        </div>
+        <div class="bg-panel border border-border rounded-xl p-4">
+          <p class="text-xs text-gray-400 uppercase tracking-wide">Active Tasks</p>
+          <p class="text-3xl font-bold text-green-400 mt-1" x-text="metrics.active_tasks ?? '—'"></p>
+        </div>
+      </div>
+
+      <!-- Recent Activity + Pending Approvals -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-panel border border-border rounded-xl p-4">
+          <h2 class="text-sm font-semibold text-gray-300 mb-3">Recent Activity</h2>
+          <div class="space-y-2 max-h-72 overflow-y-auto">
+            <template x-for="ev in activities.slice(0,10)" :key="ev.id">
+              <div class="flex items-start gap-2 text-xs py-1.5 border-b border-border last:border-0">
+                <span class="badge mt-0.5" :class="eventBadgeClass(ev.event_type)" x-text="ev.event_type"></span>
+                <div class="flex-1 min-w-0">
+                  <p class="text-gray-300 truncate" x-text="ev.tool_name || ev.user_id || '—'"></p>
+                  <p class="text-gray-500" x-text="fmtDate(ev.created_at)"></p>
+                </div>
+              </div>
+            </template>
+            <p x-show="!activities.length" class="text-gray-500 text-xs text-center py-4">No activity yet</p>
+          </div>
+        </div>
+
+        <div class="bg-panel border border-border rounded-xl p-4">
+          <h2 class="text-sm font-semibold text-gray-300 mb-3">Pending Approvals</h2>
+          <div class="space-y-2 max-h-72 overflow-y-auto">
+            <template x-for="act in pendingActions" :key="act.id">
+              <div class="bg-surface border border-border rounded-lg p-3 text-xs">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-medium text-gray-200" x-text="act.action_type"></span>
+                  <span class="badge" :class="riskBadge(act.risk_level)" x-text="act.risk_level || 'low'"></span>
+                </div>
+                <div class="flex gap-2 mt-2">
+                  <button @click="approveAction(act.id)"
+                          class="flex-1 bg-green-700 hover:bg-green-600 text-white rounded py-1 transition-colors">✓ Approve</button>
+                  <button @click="rejectAction(act.id)"
+                          class="flex-1 bg-red-800 hover:bg-red-700 text-white rounded py-1 transition-colors">✗ Reject</button>
+                </div>
+              </div>
+            </template>
+            <p x-show="!pendingActions.length" class="text-gray-500 text-xs text-center py-4">No pending approvals</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- ACTIVITY FEED                                          -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <section x-show="section === 'feed'" class="p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-semibold text-gray-300">Live Activity Feed</h2>
+        <div class="flex items-center gap-3">
+          <span class="flex items-center gap-1.5 text-xs" :class="wsConnected ? 'text-green-400' : 'text-red-400'">
+            <span class="w-2 h-2 rounded-full" :class="wsConnected ? 'bg-green-400 animate-pulse' : 'bg-red-500'"></span>
+            <span x-text="wsConnected ? 'Live' : 'Disconnected'"></span>
+          </span>
+          <button @click="feedPaused = !feedPaused"
+                  class="text-xs border border-border rounded px-2 py-1 hover:bg-border transition-colors"
+                  :class="feedPaused ? 'text-amber-400' : 'text-gray-400'"
+                  x-text="feedPaused ? '▶ Resume' : '⏸ Pause'"></button>
+        </div>
+      </div>
+      <div class="bg-panel border border-border rounded-xl p-4 h-[calc(100vh-200px)] overflow-y-auto" id="feed-list">
+        <div class="space-y-2">
+          <template x-for="ev in feedEvents" :key="ev.id">
+            <div class="flex items-start gap-3 text-xs py-2 border-b border-border last:border-0">
+              <span class="badge shrink-0" :class="eventBadgeClass(ev.event_type)" x-text="ev.event_type"></span>
+              <div class="flex-1 min-w-0">
+                <p class="text-gray-300" x-text="ev.tool_name || ev.user_id || ev.task_id || '—'"></p>
+                <p class="text-gray-500 truncate"
+                   x-text="ev.payload ? JSON.stringify(JSON.parse(ev.payload || '{}')).slice(0,100) : ''"></p>
+              </div>
+              <span class="text-gray-600 shrink-0" x-text="fmtDate(ev.created_at)"></span>
+            </div>
+          </template>
+          <p x-show="!feedEvents.length" class="text-gray-500 text-center py-8">Waiting for events…</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- CHAT                                                   -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <section x-show="section === 'chat'" class="p-6 flex flex-col h-[calc(100vh-57px)]">
+      <div class="flex-1 overflow-y-auto space-y-3 mb-4" id="chat-messages">
+        <template x-for="msg in chatMessages" :key="msg.id">
+          <div class="rounded-lg p-3 text-sm max-w-3xl" :class="msg.role==='owner' ? 'msg-owner ml-auto' : 'msg-agent'">
+            <p class="text-gray-100 leading-relaxed" x-text="msg.text"></p>
+            <p class="text-xs text-gray-500 mt-1" x-text="fmtDate(msg.ts)"></p>
+          </div>
+        </template>
+        <div x-show="chatLoading" class="msg-agent rounded-lg p-3 max-w-3xl">
+          <div class="skeleton h-3 w-48 mb-2"></div>
+          <div class="skeleton h-3 w-64 mb-2"></div>
+          <div class="skeleton h-3 w-32"></div>
+        </div>
+        <p x-show="!chatMessages.length && !chatLoading" class="text-gray-500 text-sm text-center py-12">
+          Ask the agent anything about your business…
+        </p>
+      </div>
+      <div class="flex gap-2">
+        <input x-model="chatInput" @keydown.enter.prevent="sendChat()" type="text"
+               placeholder="Ask the agent…"
+               class="flex-1 bg-panel border border-border rounded-lg px-4 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-indigo-500" />
+        <button @click="sendChat()" :disabled="!chatInput.trim() || chatLoading"
+                class="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white rounded-lg px-5 py-2.5 text-sm font-medium transition-colors">
+          Send
+        </button>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- LEADS & ACTIONS                                        -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <section x-show="section === 'leads'" class="p-6">
+      <div class="flex gap-1 border-b border-border mb-4">
+        <template x-for="tab in ['Leads','Pending Approvals','Action History']" :key="tab">
+          <button @click="leadsTab = tab"
+                  class="px-4 py-2 text-sm border-b-2 -mb-px transition-colors"
+                  :class="leadsTab===tab ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-gray-400 hover:text-gray-200'"
+                  x-text="tab"></button>
+        </template>
+      </div>
+
+      <!-- Leads table -->
+      <div x-show="leadsTab === 'Leads'">
+        <div class="bg-panel border border-border rounded-xl overflow-hidden">
+          <table class="w-full text-xs">
+            <thead class="bg-surface text-gray-400 uppercase tracking-wide">
+              <tr>
+                <th class="px-4 py-3 text-left">Name</th>
+                <th class="px-4 py-3 text-left">Business</th>
+                <th class="px-4 py-3 text-left">Contact</th>
+                <th class="px-4 py-3 text-left">Source</th>
+                <th class="px-4 py-3 text-left">Status</th>
+                <th class="px-4 py-3 text-left">Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="lead in leads" :key="lead.id">
+                <tr class="border-t border-border hover:bg-surface">
+                  <td class="px-4 py-3 text-gray-200 font-medium" x-text="lead.name || '—'"></td>
+                  <td class="px-4 py-3 text-gray-400" x-text="lead.business || '—'"></td>
+                  <td class="px-4 py-3 text-gray-400" x-text="lead.contact_info || '—'"></td>
+                  <td class="px-4 py-3 text-gray-400" x-text="lead.source || '—'"></td>
+                  <td class="px-4 py-3">
+                    <span class="badge" :class="leadStatusBadge(lead.status)" x-text="lead.status || 'new'"></span>
+                  </td>
+                  <td class="px-4 py-3 text-gray-500" x-text="fmtDate(lead.created_at)"></td>
+                </tr>
+              </template>
+              <tr x-show="!leads.length">
+                <td colspan="6" class="px-4 py-8 text-center text-gray-500">No leads found</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Pending Approvals tab -->
+      <div x-show="leadsTab === 'Pending Approvals'" class="space-y-3">
+        <template x-for="act in pendingActions" :key="act.id">
+          <div class="bg-panel border border-border rounded-xl p-4">
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-sm font-semibold text-gray-200" x-text="act.action_type"></span>
+                  <span class="badge" :class="riskBadge(act.risk_level)" x-text="act.risk_level || 'low'"></span>
+                </div>
+                <p class="text-xs text-gray-400" x-text="fmtDate(act.created_at)"></p>
+                <p class="text-xs text-gray-500 mt-1 font-mono break-all" x-text="act.data ? act.data.slice(0,200) : ''"></p>
+              </div>
+              <div class="flex gap-2 shrink-0">
+                <button @click="approveAction(act.id)"
+                        class="bg-green-700 hover:bg-green-600 text-white text-xs rounded px-3 py-1.5">✓ Approve</button>
+                <button @click="rejectAction(act.id)"
+                        class="bg-red-800 hover:bg-red-700 text-white text-xs rounded px-3 py-1.5">✗ Reject</button>
+              </div>
+            </div>
+          </div>
+        </template>
+        <p x-show="!pendingActions.length" class="text-gray-500 text-sm text-center py-8">No pending approvals</p>
+      </div>
+
+      <!-- Action History tab -->
+      <div x-show="leadsTab === 'Action History'">
+        <div class="bg-panel border border-border rounded-xl overflow-hidden">
+          <table class="w-full text-xs">
+            <thead class="bg-surface text-gray-400 uppercase tracking-wide">
+              <tr>
+                <th class="px-4 py-3 text-left">ID</th>
+                <th class="px-4 py-3 text-left">Type</th>
+                <th class="px-4 py-3 text-left">Risk</th>
+                <th class="px-4 py-3 text-left">Status</th>
+                <th class="px-4 py-3 text-left">Response</th>
+                <th class="px-4 py-3 text-left">Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="act in allActions" :key="act.id">
+                <tr class="border-t border-border hover:bg-surface">
+                  <td class="px-4 py-3 text-gray-500" x-text="act.id"></td>
+                  <td class="px-4 py-3 text-gray-200" x-text="act.action_type"></td>
+                  <td class="px-4 py-3"><span class="badge" :class="riskBadge(act.risk_level)" x-text="act.risk_level||'low'"></span></td>
+                  <td class="px-4 py-3">
+                    <span class="badge" :class="act.status==='resolved' ? 'bg-green-900 text-green-300' : 'bg-amber-900 text-amber-300'" x-text="act.status"></span>
+                  </td>
+                  <td class="px-4 py-3 text-gray-400" x-text="act.owner_response || '—'"></td>
+                  <td class="px-4 py-3 text-gray-500" x-text="fmtDate(act.created_at)"></td>
+                </tr>
+              </template>
+              <tr x-show="!allActions.length">
+                <td colspan="6" class="px-4 py-8 text-center text-gray-500">No actions yet</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- NETWORK                                                -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <section x-show="section === 'network'" class="p-6">
+      <div class="mb-4">
+        <input x-model="associateFilter" type="text" placeholder="Filter by name or role…"
+               class="bg-panel border border-border rounded-lg px-4 py-2 text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-indigo-500 w-64" />
+      </div>
+      <div class="bg-panel border border-border rounded-xl overflow-hidden">
+        <table class="w-full text-xs">
+          <thead class="bg-surface text-gray-400 uppercase tracking-wide">
+            <tr>
+              <th class="px-4 py-3 text-left">Name</th>
+              <th class="px-4 py-3 text-left">Role</th>
+              <th class="px-4 py-3 text-left">Business Type</th>
+              <th class="px-4 py-3 text-left">Telegram</th>
+              <th class="px-4 py-3 text-left">Email</th>
+              <th class="px-4 py-3 text-left">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="a in filteredAssociates" :key="a.id">
+              <tr class="border-t border-border hover:bg-surface">
+                <td class="px-4 py-3 text-gray-200 font-medium" x-text="a.name"></td>
+                <td class="px-4 py-3 text-gray-400" x-text="a.role||'—'"></td>
+                <td class="px-4 py-3 text-gray-400" x-text="a.business_type||'—'"></td>
+                <td class="px-4 py-3 text-gray-400" x-text="a.telegram_id||'—'"></td>
+                <td class="px-4 py-3 text-gray-400" x-text="a.email||'—'"></td>
+                <td class="px-4 py-3"><span class="badge bg-green-900 text-green-300" x-text="a.status"></span></td>
+              </tr>
+            </template>
+            <tr x-show="!filteredAssociates.length">
+              <td colspan="6" class="px-4 py-8 text-center text-gray-500">No associates found</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- REPORTS                                                -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <section x-show="section === 'reports'" class="p-6 space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-panel border border-border rounded-xl p-4">
+          <p class="text-xs text-gray-400 uppercase tracking-wide">Conversion Rate</p>
+          <p class="text-3xl font-bold text-green-400 mt-1" x-text="(reportData.conversion_rate ?? 0) + '%'"></p>
+        </div>
+        <div class="bg-panel border border-border rounded-xl p-4">
+          <p class="text-xs text-gray-400 uppercase tracking-wide">Total Leads</p>
+          <p class="text-3xl font-bold text-indigo-400 mt-1" x-text="reportData.total_leads ?? '—'"></p>
+        </div>
+        <div class="bg-panel border border-border rounded-xl p-4">
+          <p class="text-xs text-gray-400 uppercase tracking-wide">Converted</p>
+          <p class="text-3xl font-bold text-cyan-400 mt-1" x-text="reportData.converted_leads ?? '—'"></p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-panel border border-border rounded-xl p-4">
+          <h3 class="text-sm font-semibold text-gray-300 mb-3">Lead Activity (7 days)</h3>
+          <canvas id="chartLeadTrend" height="200"></canvas>
+        </div>
+        <div class="bg-panel border border-border rounded-xl p-4">
+          <h3 class="text-sm font-semibold text-gray-300 mb-3">Lead Status Distribution</h3>
+          <canvas id="chartLeadStatus" height="200"></canvas>
+        </div>
+        <div class="bg-panel border border-border rounded-xl p-4">
+          <h3 class="text-sm font-semibold text-gray-300 mb-3">Agent Actions (7 days)</h3>
+          <canvas id="chartActionTrend" height="200"></canvas>
+        </div>
+        <div class="bg-panel border border-border rounded-xl p-4">
+          <h3 class="text-sm font-semibold text-gray-300 mb-3">Lead Sources</h3>
+          <canvas id="chartLeadSources" height="200"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- SETUP                                                  -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <section x-show="section === 'setup'" class="p-6 max-w-3xl mx-auto">
+
+      <!-- Header -->
+      <div class="mb-6">
+        <div class="flex items-center gap-3 mb-1">
+          <h2 class="text-lg font-bold text-gray-100">BizNode Setup</h2>
+          <span class="badge" :class="configured ? 'bg-green-900 text-green-300' : 'bg-amber-900 text-amber-300'"
+                x-text="configured ? '✓ Configured' : '⚠ Not configured'"></span>
+        </div>
+        <p class="text-xs text-gray-400">
+          Configure your BizNode agent below. Values are saved to
+          <code class="help-code">.env</code> in the project root.
+          Minimum required: <strong class="text-indigo-300">Telegram Bot Token</strong> +
+          <strong class="text-indigo-300">Owner Telegram ID</strong>.
+          Click <button @click="section='help'" class="text-indigo-400 underline">Help</button> for field details.
+        </p>
+      </div>
+
+      <!-- Toast -->
+      <div x-show="toast.show" x-transition
+           class="mb-4 rounded-lg px-4 py-3 text-sm font-medium"
+           :class="toast.ok ? 'bg-green-900 text-green-200 border border-green-700' : 'bg-red-900 text-red-200 border border-red-700'"
+           x-text="toast.msg"></div>
+
+      <!-- Loading -->
+      <div x-show="settingsLoading" class="space-y-3 mb-6">
+        <template x-for="i in [1,2,3,4]" :key="i">
+          <div class="skeleton h-16 w-full rounded-xl"></div>
+        </template>
+      </div>
+
+      <!-- Form groups -->
+      <template x-if="!settingsLoading">
+        <form @submit.prevent="saveSettings()" class="space-y-6">
+
+          <!-- Group: Telegram -->
+          <div class="bg-panel border border-border rounded-xl overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-border bg-surface">
+              <div class="flex items-center gap-2">
+                <span class="text-base">📡</span>
+                <span class="text-sm font-semibold text-gray-200">Telegram Bot</span>
+                <span class="badge text-xs"
+                      :class="settingsValues.TELEGRAM_BOT_TOKEN && settingsValues.TELEGRAM_BOT_TOKEN !== '••••••••' || isConfiguredGroup('telegram')
+                              ? 'bg-green-900 text-green-300' : 'bg-gray-800 text-gray-400'"
+                      x-text="isConfiguredGroup('telegram') ? '✓ set' : 'required'"></span>
+              </div>
+              <button type="button" @click="testService('telegram')"
+                      class="text-xs bg-indigo-800 hover:bg-indigo-700 text-indigo-200 rounded px-3 py-1 transition-colors">
+                Test Connection
+              </button>
+            </div>
+            <div class="p-4 space-y-4">
+              <template x-for="field in schemaGroup('telegram')" :key="field.key">
+                <div>
+                  <label class="block text-xs font-medium text-gray-300 mb-1">
+                    <span x-text="field.label"></span>
+                    <span x-show="field.required" class="text-red-400 ml-1">*</span>
+                  </label>
+                  <div class="relative">
+                    <input :type="revealFields[field.key] ? 'text' : field.type"
+                           x-model="settingsValues[field.key]"
+                           :placeholder="field.default || 'Enter ' + field.label"
+                           class="field-input" :class="field.sensitive ? 'pr-10' : ''" />
+                    <button x-show="field.sensitive" type="button"
+                            @click="revealFields[field.key] = !revealFields[field.key]"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 text-xs">
+                      <span x-text="revealFields[field.key] ? '🙈' : '👁'"></span>
+                    </button>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-1" x-text="field.hint"></p>
+                </div>
+              </template>
+            </div>
+            <!-- Test result -->
+            <div x-show="testResults.telegram" class="px-4 pb-3">
+              <p class="text-xs rounded px-3 py-2"
+                 :class="testResults.telegram?.ok ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'"
+                 x-text="testResults.telegram?.message"></p>
+            </div>
+          </div>
+
+          <!-- Group: Ollama -->
+          <div class="bg-panel border border-border rounded-xl overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-border bg-surface">
+              <div class="flex items-center gap-2">
+                <span class="text-base">🧠</span>
+                <span class="text-sm font-semibold text-gray-200">Ollama / LLM</span>
+              </div>
+              <button type="button" @click="testService('ollama')"
+                      class="text-xs bg-indigo-800 hover:bg-indigo-700 text-indigo-200 rounded px-3 py-1 transition-colors">
+                Test Connection
+              </button>
+            </div>
+            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <template x-for="field in schemaGroup('ollama')" :key="field.key">
+                <div :class="field.key === 'OLLAMA_URL' || field.key === 'OLLAMA_EMBED_URL' ? 'sm:col-span-2' : ''">
+                  <label class="block text-xs font-medium text-gray-300 mb-1">
+                    <span x-text="field.label"></span>
+                    <span x-show="field.required" class="text-red-400 ml-1">*</span>
+                  </label>
+                  <input :type="field.type" x-model="settingsValues[field.key]"
+                         :placeholder="field.default || 'Enter ' + field.label"
+                         class="field-input" />
+                  <p class="text-xs text-gray-500 mt-1" x-text="field.hint"></p>
+                </div>
+              </template>
+            </div>
+            <div x-show="testResults.ollama" class="px-4 pb-3">
+              <p class="text-xs rounded px-3 py-2"
+                 :class="testResults.ollama?.ok ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'"
+                 x-text="testResults.ollama?.message"></p>
+            </div>
+          </div>
+
+          <!-- Group: Qdrant -->
+          <div class="bg-panel border border-border rounded-xl overflow-hidden">
+            <div class="flex items-center justify-between px-4 py-3 border-b border-border bg-surface">
+              <div class="flex items-center gap-2">
+                <span class="text-base">🗄️</span>
+                <span class="text-sm font-semibold text-gray-200">Qdrant Vector DB</span>
+              </div>
+              <button type="button" @click="testService('qdrant')"
+                      class="text-xs bg-indigo-800 hover:bg-indigo-700 text-indigo-200 rounded px-3 py-1 transition-colors">
+                Test Connection
+              </button>
+            </div>
+            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <template x-for="field in schemaGroup('qdrant')" :key="field.key">
+                <div>
+                  <label class="block text-xs font-medium text-gray-300 mb-1" x-text="field.label"></label>
+                  <input :type="field.type" x-model="settingsValues[field.key]"
+                         :placeholder="field.default" class="field-input" />
+                  <p class="text-xs text-gray-500 mt-1" x-text="field.hint"></p>
+                </div>
+              </template>
+            </div>
+            <div x-show="testResults.qdrant" class="px-4 pb-3">
+              <p class="text-xs rounded px-3 py-2"
+                 :class="testResults.qdrant?.ok ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'"
+                 x-text="testResults.qdrant?.message"></p>
+            </div>
+          </div>
+
+          <!-- Group: Email -->
+          <div class="bg-panel border border-border rounded-xl overflow-hidden">
+            <div class="flex items-center gap-2 px-4 py-3 border-b border-border bg-surface">
+              <span class="text-base">📧</span>
+              <span class="text-sm font-semibold text-gray-200">Email / SMTP</span>
+              <span class="badge bg-gray-800 text-gray-400 text-xs">optional</span>
+            </div>
+            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <template x-for="field in schemaGroup('email')" :key="field.key">
+                <div :class="field.key==='AGENT_EMAIL'||field.key==='OWNER_EMAIL' ? 'sm:col-span-2' : ''">
+                  <label class="block text-xs font-medium text-gray-300 mb-1" x-text="field.label"></label>
+                  <div class="relative">
+                    <input :type="revealFields[field.key] ? 'text' : field.type"
+                           x-model="settingsValues[field.key]"
+                           :placeholder="field.default || 'Enter ' + field.label"
+                           class="field-input" :class="field.sensitive ? 'pr-10' : ''" />
+                    <button x-show="field.sensitive" type="button"
+                            @click="revealFields[field.key] = !revealFields[field.key]"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 text-xs">
+                      <span x-text="revealFields[field.key] ? '🙈' : '👁'"></span>
+                    </button>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-1" x-text="field.hint"></p>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Group: Security -->
+          <div class="bg-panel border border-border rounded-xl overflow-hidden">
+            <div class="flex items-center gap-2 px-4 py-3 border-b border-border bg-surface">
+              <span class="text-base">🔐</span>
+              <span class="text-sm font-semibold text-gray-200">Security</span>
+              <span class="badge bg-gray-800 text-gray-400 text-xs">optional</span>
+            </div>
+            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <template x-for="field in schemaGroup('security')" :key="field.key">
+                <div>
+                  <label class="block text-xs font-medium text-gray-300 mb-1" x-text="field.label"></label>
+                  <div class="relative">
+                    <input :type="revealFields[field.key] ? 'text' : 'password'"
+                           x-model="settingsValues[field.key]"
+                           :placeholder="field.default || 'Enter ' + field.label"
+                           class="field-input pr-10" />
+                    <button type="button" @click="revealFields[field.key] = !revealFields[field.key]"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 text-xs">
+                      <span x-text="revealFields[field.key] ? '🙈' : '👁'"></span>
+                    </button>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-1" x-text="field.hint"></p>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Group: Advanced (collapsible) -->
+          <div class="bg-panel border border-border rounded-xl overflow-hidden">
+            <button type="button" @click="showAdvanced = !showAdvanced"
+                    class="w-full flex items-center justify-between px-4 py-3 bg-surface hover:bg-border transition-colors text-sm">
+              <div class="flex items-center gap-2">
+                <span>⚙️</span>
+                <span class="font-semibold text-gray-200">Advanced</span>
+                <span class="badge bg-gray-800 text-gray-400 text-xs">optional</span>
+              </div>
+              <span class="text-gray-400" x-text="showAdvanced ? '▲' : '▼'"></span>
+            </button>
+            <div x-show="showAdvanced" class="p-4">
+              <template x-for="field in schemaGroup('advanced')" :key="field.key">
+                <div>
+                  <label class="block text-xs font-medium text-gray-300 mb-1" x-text="field.label"></label>
+                  <input :type="field.type" x-model="settingsValues[field.key]"
+                         :placeholder="field.default" class="field-input" />
+                  <p class="text-xs text-gray-500 mt-1" x-text="field.hint"></p>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Save button -->
+          <div class="flex items-center gap-3 pt-2">
+            <button type="submit" :disabled="settingsSaving"
+                    class="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold rounded-lg px-6 py-2.5 text-sm transition-colors">
+              <span x-show="!settingsSaving">💾 Save Configuration</span>
+              <span x-show="settingsSaving">Saving…</span>
+            </button>
+            <button type="button" @click="section='help'"
+                    class="text-sm text-indigo-400 hover:text-indigo-300 underline">
+              Need help with these fields?
+            </button>
+          </div>
+
+        </form>
+      </template>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- HELP                                                   -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <section x-show="section === 'help'" class="p-6 max-w-3xl mx-auto pb-16">
+
+      <div class="mb-6">
+        <h2 class="text-lg font-bold text-gray-100 mb-1">BizNode Help & Field Guide</h2>
+        <p class="text-xs text-gray-400">Everything you need to get started and understand the configuration.</p>
+      </div>
+
+      <!-- ── How BizNode Works ── -->
+      <h2 class="help-h2">How BizNode Works</h2>
+      <p class="help-p">
+        BizNode is an autonomous AI business operator. It runs as a background agent that handles
+        lead capture, business registration, owner approvals, memory storage, and networking — all
+        without you having to be present. You interact with it through Telegram and monitor it
+        through this dashboard.
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3 my-4">
+        <div class="bg-panel border border-border rounded-lg p-3 text-xs">
+          <p class="text-indigo-400 font-bold mb-1">1. You configure</p>
+          <p class="text-gray-400">Fill in the Setup form. Save to <code class="help-code">.env</code>. The agent reads credentials from there.</p>
+        </div>
+        <div class="bg-panel border border-border rounded-lg p-3 text-xs">
+          <p class="text-indigo-400 font-bold mb-1">2. Agent operates</p>
+          <p class="text-gray-400">BizNode listens on Telegram, captures leads, stores memory in Qdrant + SQLite, and acts via Ollama LLM.</p>
+        </div>
+        <div class="bg-panel border border-border rounded-lg p-3 text-xs">
+          <p class="text-indigo-400 font-bold mb-1">3. You monitor</p>
+          <p class="text-gray-400">This dashboard shows live activity, leads, approvals, chat, and reports. Approve or reject actions here.</p>
+        </div>
+      </div>
+
+      <!-- ── Minimum Requirements ── -->
+      <h2 class="help-h2">Minimum Requirements</h2>
+      <p class="help-p">You need <strong class="text-white">two</strong> things to get the agent running:</p>
+      <table class="help-table">
+        <thead><tr><th>What</th><th>Where to get it</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code class="help-code">TELEGRAM_BOT_TOKEN</code></td>
+            <td>Open Telegram → search <strong>@BotFather</strong> → send <code class="help-code">/newbot</code> → follow the prompts → copy the token it gives you.</td>
+          </tr>
+          <tr>
+            <td><code class="help-code">OWNER_TELEGRAM_ID</code></td>
+            <td>Open Telegram → search <strong>@userinfobot</strong> → send <code class="help-code">/start</code> → it replies with your numeric ID (e.g. <code class="help-code">123456789</code>).</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- ── Setup Form Fields ── -->
+      <h2 class="help-h2">Setup Form — Field Reference</h2>
+
+      <h3 class="help-h3">📡 Telegram Bot</h3>
+      <table class="help-table">
+        <thead><tr><th>Field</th><th>Description</th><th>Example</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code class="help-code">Bot Token</code> ★</td>
+            <td>The secret token BizNode uses to send and receive Telegram messages as your bot. Never share this — treat it like a password.</td>
+            <td><code class="help-code">7123456789:AAHx…</code></td>
+          </tr>
+          <tr>
+            <td><code class="help-code">Owner Telegram ID</code> ★</td>
+            <td>Your personal Telegram user ID (a number). The agent uses this to send you notifications and verify that commands come from you.</td>
+            <td><code class="help-code">123456789</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 class="help-h3">🧠 Ollama / LLM</h3>
+      <p class="help-p">BizNode uses <a href="https://ollama.com" class="text-indigo-400 underline" target="_blank">Ollama</a> to run AI models locally — no cloud API keys needed. Install Ollama, pull a model, and point BizNode to it.</p>
+      <table class="help-table">
+        <thead><tr><th>Field</th><th>Description</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code class="help-code">LLM Endpoint</code> ★</td>
+            <td>Full URL to Ollama's text generation API. Leave as default if Ollama runs on the same machine.</td>
+            <td><code class="help-code">http://localhost:11434/api/generate</code></td>
+          </tr>
+          <tr>
+            <td><code class="help-code">Embeddings Endpoint</code></td>
+            <td>URL for Ollama's embedding API. Used to convert text to vectors for semantic memory search.</td>
+            <td><code class="help-code">http://localhost:11434/api/embeddings</code></td>
+          </tr>
+          <tr>
+            <td><code class="help-code">LLM Model Name</code> ★</td>
+            <td>The model BizNode thinks and writes with. Must be pulled first: <code class="help-code">ollama pull qwen2.5</code></td>
+            <td><code class="help-code">qwen2.5</code></td>
+          </tr>
+          <tr>
+            <td><code class="help-code">Embedding Model</code></td>
+            <td>Model for generating semantic embeddings. Pull with: <code class="help-code">ollama pull nomic-embed-text</code></td>
+            <td><code class="help-code">nomic-embed-text</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="bg-indigo-950 border border-indigo-800 rounded-lg p-3 text-xs text-indigo-200 mb-4">
+        <strong>Quick start:</strong> Install Ollama from <span class="text-indigo-300">ollama.com</span>, then run:<br>
+        <code class="help-code">ollama pull qwen2.5</code>&nbsp;&nbsp;
+        <code class="help-code">ollama pull nomic-embed-text</code>
+      </div>
+
+      <h3 class="help-h3">🗄️ Qdrant Vector DB</h3>
+      <p class="help-p">Qdrant stores the agent's semantic memory — everything it has learned about leads, businesses, and notes. It enables "remember when…" style recall.</p>
+      <table class="help-table">
+        <thead><tr><th>Field</th><th>Description</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code class="help-code">Qdrant Host</code></td>
+            <td>Hostname where Qdrant is running. Use <code class="help-code">localhost</code> for local installation or Docker.</td>
+            <td><code class="help-code">localhost</code></td>
+          </tr>
+          <tr>
+            <td><code class="help-code">Qdrant Port</code></td>
+            <td>TCP port for Qdrant's REST API. Default is 6333 unless you changed it in Docker.</td>
+            <td><code class="help-code">6333</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="bg-surface border border-border rounded-lg p-3 text-xs text-gray-400 mb-4">
+        <strong class="text-gray-300">Run Qdrant with Docker:</strong><br>
+        <code class="help-code">docker run -p 6333:6333 qdrant/qdrant</code>
+      </div>
+
+      <h3 class="help-h3">📧 Email / SMTP</h3>
+      <p class="help-p">Optional. Lets the agent send email notifications and outreach on your behalf.</p>
+      <table class="help-table">
+        <thead><tr><th>Field</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code class="help-code">Agent Email</code></td><td>The "From" address BizNode uses. This is the email your contacts will see.</td></tr>
+          <tr><td><code class="help-code">SMTP Host</code></td><td>Your email provider's SMTP server. Gmail: <code class="help-code">smtp.gmail.com</code></td></tr>
+          <tr><td><code class="help-code">SMTP Port</code></td><td>587 for STARTTLS (most providers), 465 for SSL/TLS.</td></tr>
+          <tr><td><code class="help-code">SMTP Username</code></td><td>Your email address used to log in to the SMTP server.</td></tr>
+          <tr><td><code class="help-code">SMTP Password</code></td><td>For Gmail: generate an <strong>App Password</strong> (Google Account → Security → App Passwords). Do <em>not</em> use your main Gmail password.</td></tr>
+          <tr><td><code class="help-code">Owner Email</code></td><td>Where the agent sends you owner-level notifications and alerts.</td></tr>
+        </tbody>
+      </table>
+
+      <h3 class="help-h3">🔐 Security</h3>
+      <table class="help-table">
+        <thead><tr><th>Field</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code class="help-code">Node Password</code></td>
+            <td>Used to encrypt the node's cryptographic identity keys. Set it once and do not change it — changing it requires re-generating the identity.</td>
+          </tr>
+          <tr>
+            <td><code class="help-code">Audit Signing Key</code></td>
+            <td>Secret used to sign every audit log entry. Change from the default for a production deployment. Used to detect log tampering.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3 class="help-h3">⚙️ Advanced</h3>
+      <table class="help-table">
+        <thead><tr><th>Field</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code class="help-code">SQLite Database Path</code></td>
+            <td>Path to the SQLite database file relative to the project root. Only change this if you want the database in a custom location (e.g. on a USB drive or network share).</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- ── Dashboard Sections ── -->
+      <h2 class="help-h2">Dashboard Sections</h2>
+      <table class="help-table">
+        <thead><tr><th>Section</th><th>What it shows</th></tr></thead>
+        <tbody>
+          <tr><td>⚡ Dashboard</td><td>Service health pills, metric cards (leads, businesses, tasks, approvals), recent activity list, and a pending-approvals queue with inline Approve / Reject buttons.</td></tr>
+          <tr><td>📡 Activity Feed</td><td>Real-time stream of every agent action via WebSocket. Color-coded by event type. Pause/resume toggle to freeze the stream while you read.</td></tr>
+          <tr><td>💬 Chat</td><td>Conversational interface backed by the RAG agent. Ask the agent to summarise leads, explain a decision, or search memory. Requires Ollama to be running.</td></tr>
+          <tr><td>🎯 Leads & Actions</td><td>Full leads table with status badges. Pending approvals tab for reviewing risky actions. Action history with approve/reject outcome.</td></tr>
+          <tr><td>🌐 Network</td><td>Table of registered 1bz associate partners with role filter.</td></tr>
+          <tr><td>📊 Reports</td><td>Charts for lead activity trend, status distribution, agent action frequency, and lead sources.</td></tr>
+          <tr><td>⚙️ Setup</td><td>This configuration form. Saves to <code class="help-code">.env</code> in the project root.</td></tr>
+        </tbody>
+      </table>
+
+      <!-- ── Starting the Agent ── -->
+      <h2 class="help-h2">Starting the Full Agent (after Setup)</h2>
+      <p class="help-p">Once configured, start the Telegram bot agent from the project root:</p>
+      <div class="bg-surface border border-border rounded-lg p-4 font-mono text-xs text-green-400 space-y-1 mb-4">
+        <p># 1. Make sure Ollama and Qdrant are running</p>
+        <p>ollama serve</p>
+        <p>docker run -p 6333:6333 qdrant/qdrant</p>
+        <p></p>
+        <p># 2. Start the BizNode agent</p>
+        <p>python boot.py</p>
+        <p></p>
+        <p># 3. Keep this dashboard running separately</p>
+        <p>python run_dashboard.py</p>
+      </div>
+
+      <!-- ── Troubleshooting ── -->
+      <h2 class="help-h2">Troubleshooting</h2>
+      <table class="help-table">
+        <thead><tr><th>Problem</th><th>Fix</th></tr></thead>
+        <tbody>
+          <tr><td>Telegram Test says "Unauthorized"</td><td>The bot token is wrong or incomplete. Re-copy it from @BotFather — make sure there are no spaces.</td></tr>
+          <tr><td>Ollama Test fails</td><td>Run <code class="help-code">ollama serve</code> in a terminal. Check the URL matches what you entered.</td></tr>
+          <tr><td>Qdrant Test fails</td><td>Start Qdrant: <code class="help-code">docker run -p 6333:6333 qdrant/qdrant</code></td></tr>
+          <tr><td>Chat returns an error</td><td>langgraph or Ollama is not running. Both must be installed and the model must be pulled.</td></tr>
+          <tr><td>No leads showing</td><td>The agent hasn't processed any messages yet. Send a message to your Telegram bot first.</td></tr>
+          <tr><td>Dashboard shows "Not configured"</td><td>Go to Setup, fill in at minimum Bot Token + Owner ID, click Save.</td></tr>
+        </tbody>
+      </table>
+
+    </section>
+
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- ALPINE.JS APP                                              -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<script>
+function biznode() {
+  return {
+    section:       'dashboard',
+    sidebarOpen:   true,
+    lastUpdated:   '—',
+    configured:    false,
+
+    navItems: [
+      { id: 'dashboard', icon: '⚡', label: 'Dashboard'       },
+      { id: 'feed',      icon: '📡', label: 'Activity Feed'   },
+      { id: 'chat',      icon: '💬', label: 'Chat'            },
+      { id: 'leads',     icon: '🎯', label: 'Leads & Actions' },
+      { id: 'network',   icon: '🌐', label: 'Network'         },
+      { id: 'reports',   icon: '📊', label: 'Reports'         },
+      { id: 'setup',     icon: '⚙️', label: 'Setup'           },
+      { id: 'help',      icon: '❓', label: 'Help'            },
+    ],
+
+    // Dashboard data
+    health:         { components: {} },
+    metrics:        {},
+    activities:     [],
+    leads:          [],
+    pendingActions: [],
+    allActions:     [],
+    associates:     [],
+    reportData:     {},
+    feedEvents:     [],
+    feedPaused:     false,
+    wsConnected:    false,
+    leadsTab:       'Leads',
+    associateFilter:'',
+
+    // Chat
+    chatMessages: [],
+    chatInput:    '',
+    chatLoading:  false,
+    _chatId:      0,
+
+    // Settings / Setup
+    settingsSchema:  [],
+    settingsValues:  {},
+    settingsLoading: true,
+    settingsSaving:  false,
+    revealFields:    {},
+    showAdvanced:    false,
+    testResults:     {},  // { telegram: {ok,message}, ollama: ..., qdrant: ... }
+
+    // Toast notification
+    toast: { show: false, ok: true, msg: '' },
+
+    // Charts
+    _charts: {},
+
+    // ── Computed ────────────────────────────────────────────────────
+    get filteredAssociates() {
+      const q = this.associateFilter.toLowerCase();
+      if (!q) return this.associates;
+      return this.associates.filter(a =>
+        (a.name || '').toLowerCase().includes(q) ||
+        (a.role || '').toLowerCase().includes(q)
+      );
+    },
+
+    // ── Init ────────────────────────────────────────────────────────
+    async init() {
+      await Promise.allSettled([
+        this.refreshAll(),
+        this.loadSettings(),
+      ]);
+      this.connectWS();
+      // If not configured, start on setup page
+      if (!this.configured) this.section = 'setup';
+    },
+
+    switchSection(id) {
+      this.section = id;
+      if (id === 'reports') this.$nextTick(() => this.initCharts());
+    },
+
+    async refreshAll() {
+      this.lastUpdated = new Date().toLocaleTimeString();
+      await Promise.allSettled([
+        this.fetchHealth(),
+        this.fetchMetrics(),
+        this.fetchActivities(),
+        this.fetchLeads(),
+        this.fetchPendingActions(),
+        this.fetchAllActions(),
+        this.fetchAssociates(),
+        this.fetchReports(),
+      ]);
+    },
+
+    // ── Data fetchers ────────────────────────────────────────────────
+    async fetchHealth()         { try { const r = await fetch('/api/status');           this.health         = await r.json(); } catch {} },
+    async fetchMetrics()        { try { const r = await fetch('/api/metrics');          this.metrics        = await r.json(); } catch {} },
+    async fetchActivities()     { try { const r = await fetch('/api/activities?limit=50'); this.activities  = await r.json(); } catch {} },
+    async fetchLeads()          { try { const r = await fetch('/api/leads');            this.leads          = await r.json(); } catch {} },
+    async fetchPendingActions() { try { const r = await fetch('/api/actions/pending');  this.pendingActions = await r.json(); } catch {} },
+    async fetchAllActions()     { try { const r = await fetch('/api/actions');          this.allActions     = await r.json(); } catch {} },
+    async fetchAssociates()     { try { const r = await fetch('/api/associates');       this.associates     = await r.json(); } catch {} },
+    async fetchReports()        { try { const r = await fetch('/api/reports/summary');  this.reportData     = await r.json(); } catch {} },
+
+    // ── Settings ─────────────────────────────────────────────────────
+    async loadSettings() {
+      this.settingsLoading = true;
+      try {
+        const r    = await fetch('/api/settings');
+        const data = await r.json();
+        this.settingsSchema = data.schema  || [];
+        this.settingsValues = data.values  || {};
+        this.configured     = data.configured;
+        // Init reveal map
+        this.settingsSchema.forEach(f => { this.revealFields[f.key] = false; });
+      } catch {}
+      this.settingsLoading = false;
+    },
+
+    schemaGroup(group) {
+      return this.settingsSchema.filter(f => f.group === group);
+    },
+
+    isConfiguredGroup(group) {
+      return this.schemaGroup(group)
+        .filter(f => f.required)
+        .every(f => {
+          const v = this.settingsValues[f.key];
+          return v && v !== '••••••••';
+        });
+    },
+
+    async saveSettings() {
+      this.settingsSaving = true;
+      try {
+        const r = await fetch('/api/settings', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify(this.settingsValues),
+        });
+        const data = await r.json();
+        if (data.error) throw new Error(data.error);
+        this.configured = data.configured;
+        this.showToast(true, '✓ Configuration saved to .env');
+      } catch (e) {
+        this.showToast(false, '✗ Save failed: ' + e.message);
+      }
+      this.settingsSaving = false;
+    },
+
+    async testService(svc) {
+      this.testResults[svc] = { ok: null, message: 'Testing…' };
+      try {
+        const r    = await fetch(`/api/settings/test/${svc}`, { method: 'POST' });
+        const data = await r.json();
+        this.testResults[svc] = data;
+      } catch (e) {
+        this.testResults[svc] = { ok: false, message: String(e) };
+      }
+    },
+
+    showToast(ok, msg) {
+      this.toast = { show: true, ok, msg };
+      setTimeout(() => { this.toast.show = false; }, 4000);
+    },
+
+    // ── Actions ──────────────────────────────────────────────────────
+    async approveAction(id) {
+      await fetch(`/api/actions/${id}/approve`, { method: 'POST' });
+      await Promise.allSettled([this.fetchPendingActions(), this.fetchAllActions(), this.fetchMetrics()]);
+    },
+    async rejectAction(id) {
+      await fetch(`/api/actions/${id}/reject`, { method: 'POST' });
+      await Promise.allSettled([this.fetchPendingActions(), this.fetchAllActions(), this.fetchMetrics()]);
+    },
+
+    // ── Chat ─────────────────────────────────────────────────────────
+    async sendChat() {
+      const msg = this.chatInput.trim();
+      if (!msg || this.chatLoading) return;
+      this.chatInput = '';
+      this.chatMessages.push({ id: ++this._chatId, role: 'owner', text: msg, ts: new Date().toISOString() });
+      this.chatLoading = true;
+      this.$nextTick(() => { const el = document.getElementById('chat-messages'); if (el) el.scrollTop = el.scrollHeight; });
+      try {
+        const r    = await fetch('/api/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({message:msg}) });
+        const data = await r.json();
+        this.chatMessages.push({ id: ++this._chatId, role: 'agent', text: data.response || 'No response.', ts: new Date().toISOString() });
+      } catch {
+        this.chatMessages.push({ id: ++this._chatId, role: 'agent', text: 'Error reaching agent.', ts: new Date().toISOString() });
+      }
+      this.chatLoading = false;
+      this.$nextTick(() => { const el = document.getElementById('chat-messages'); if (el) el.scrollTop = el.scrollHeight; });
+    },
+
+    // ── WebSocket ────────────────────────────────────────────────────
+    connectWS() {
+      const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+      const ws = new WebSocket(`${protocol}://${location.host}/ws`);
+      ws.onopen  = () => { this.wsConnected = true; };
+      ws.onclose = () => { this.wsConnected = false; setTimeout(() => this.connectWS(), 5000); };
+      ws.onerror = () => { this.wsConnected = false; };
+      ws.onmessage = (e) => {
+        if (this.feedPaused) return;
+        try {
+          const data = JSON.parse(e.data);
+          if (!data.events) return;
+          if (data.type === 'snapshot') {
+            this.feedEvents = data.events;
+          } else {
+            const existing = new Set(this.feedEvents.map(ev => ev.id));
+            const newEvs   = data.events.filter(ev => !existing.has(ev.id));
+            this.feedEvents = [...newEvs, ...this.feedEvents].slice(0, 200);
+            this.fetchActivities();
+            this.fetchMetrics();
+            this.fetchPendingActions();
+          }
+          this.$nextTick(() => {
+            if (this.section === 'feed') {
+              const el = document.getElementById('feed-list');
+              if (el) el.scrollTop = 0;
+            }
+          });
+        } catch {}
+      };
+    },
+
+    // ── Charts ───────────────────────────────────────────────────────
+    initCharts() {
+      Object.values(this._charts).forEach(c => { try { c.destroy(); } catch {} });
+      this._charts = {};
+      const gc  = '#9ca3af';
+      const gg  = '#2a2d3a';
+
+      const opts = (type, labels, datasets) => ({
+        type,
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: gc, boxWidth: 12 } } },
+          scales: (type !== 'doughnut' && type !== 'pie') ? {
+            x: { ticks: { color: gc }, grid: { color: gg } },
+            y: { ticks: { color: gc }, grid: { color: gg } }
+          } : undefined,
+        }
+      });
+
+      const el = id => document.getElementById(id);
+
+      if (el('chartLeadTrend')) {
+        const t = this.reportData.lead_trend || [];
+        this._charts.lt = new Chart(el('chartLeadTrend'), opts('bar', t.map(x=>x.day),
+          [{ label:'Leads', data:t.map(x=>x.count), backgroundColor:'#6366f1', borderRadius:4 }]));
+      }
+      if (el('chartLeadStatus')) {
+        const s = this.reportData.lead_status || {};
+        const colors = { new:'#6366f1', contacted:'#f59e0b', converted:'#22c55e', archived:'#6b7280' };
+        this._charts.ls = new Chart(el('chartLeadStatus'), opts('doughnut', Object.keys(s),
+          [{ data:Object.values(s), backgroundColor:Object.keys(s).map(k=>colors[k]||'#4b5563'), borderWidth:0 }]));
+      }
+      if (el('chartActionTrend')) {
+        const t = this.reportData.action_trend || [];
+        this._charts.at = new Chart(el('chartActionTrend'), opts('line', t.map(x=>x.day),
+          [{ label:'Actions', data:t.map(x=>x.count), borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,0.1)', tension:.4, fill:true }]));
+      }
+      if (el('chartLeadSources')) {
+        const s = this.reportData.lead_sources || {};
+        this._charts.src = new Chart(el('chartLeadSources'), opts('doughnut', Object.keys(s),
+          [{ data:Object.values(s), backgroundColor:['#6366f1','#22c55e','#f59e0b','#06b6d4','#ec4899'], borderWidth:0 }]));
+      }
+    },
+
+    // ── Helpers ──────────────────────────────────────────────────────
+    fmtDate(s) {
+      if (!s) return '—';
+      try { return new Date(s).toLocaleString(undefined, {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); }
+      catch { return s; }
+    },
+    eventBadgeClass(type) {
+      if (!type) return 'bg-gray-800 text-gray-400';
+      const t = type.toUpperCase();
+      if (t.includes('FAIL')||t.includes('ERROR')) return 'bg-red-900 text-red-300';
+      if (t.includes('APPROVAL')||t.includes('DECISION')) return 'bg-purple-900 text-purple-300';
+      if (t.includes('LEAD')||t.includes('TASK')) return 'bg-blue-900 text-blue-300';
+      if (t.includes('TOOL')||t.includes('SCHEDULE')) return 'bg-amber-900 text-amber-300';
+      return 'bg-gray-800 text-gray-400';
+    },
+    leadStatusBadge(s) {
+      return ({new:'bg-blue-900 text-blue-300',contacted:'bg-amber-900 text-amber-300',converted:'bg-green-900 text-green-300',archived:'bg-gray-800 text-gray-400'})[s] || 'bg-gray-800 text-gray-400';
+    },
+    riskBadge(l) {
+      return ({low:'bg-green-900 text-green-300',medium:'bg-amber-900 text-amber-300',med:'bg-amber-900 text-amber-300',high:'bg-red-900 text-red-300'})[(l||'low').toLowerCase()] || 'bg-green-900 text-green-300';
+    },
+  };
+}
+</script>
+
+</body>
+</html>

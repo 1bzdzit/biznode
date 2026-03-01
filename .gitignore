@@ -1,0 +1,16 @@
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Build artifacts
+build/
+
+# Runtime data
+.env
+memory/biznode.db*
+logs/
+
+# PyInstaller intermediates (keep dist/)
+*.spec
